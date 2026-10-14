@@ -48,11 +48,11 @@ export class CameraJogo {
     const C = CONFIG.camera;
     if (this.orbita) {
       const o = this.orbita;
-      this.yaw += dt * (this.reduzirMovimento ? 0.12 : 0.35);
+      if (!o.parado) this.yaw += dt * (this.reduzirMovimento ? 0.12 : 0.35);
       this.alvo.lerp(o.centro, suavizar(3, dt));
       const dir = new THREE.Vector3(Math.sin(this.yaw) * Math.cos(o.pitch), Math.sin(o.pitch), Math.cos(this.yaw) * Math.cos(o.pitch));
       const pos = dir.multiplyScalar(o.distancia).add(this.alvo);
-      this.posicaoSuave.lerp(pos, suavizar(3, dt));
+      this.posicaoSuave.lerp(pos, suavizar(o.parado ? 6 : 3, dt));
       this.camera.position.copy(this.posicaoSuave);
       this.camera.lookAt(this.alvo);
       return;

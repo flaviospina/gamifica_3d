@@ -41,6 +41,12 @@ button, select, input { font-family: inherit; font-size: inherit; }
 .hud { position: fixed; z-index: 10; pointer-events: none; }
 .hud > * { pointer-events: auto; }
 #hudTopo { top: 14px; left: 14px; right: 14px; display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.hud-botoes { display: flex; gap: 8px; align-items: center; }
+.botao.redondo { width: 44px; height: 44px; padding: 0; border-radius: 50%; font-size: 20px; display: inline-flex; align-items: center; justify-content: center; }
+.botao.redondo[aria-pressed="false"] { opacity: .6; }
+.hud-cartao { min-width: 230px; max-width: 360px; }
+.hud-progresso { height: 8px; background: rgba(22,31,56,.12); border-radius: 99px; margin-top: 8px; overflow: hidden; }
+#hudBarra { height: 100%; width: 0; background: linear-gradient(90deg, var(--verde), var(--dourado)); border-radius: 99px; transition: width .5s ease; }
 .cartao {
   background: var(--papel-90); color: var(--navy); border-radius: var(--raio); padding: 10px 14px;
   box-shadow: 0 6px 20px rgba(0,0,0,.18); border: 2px solid rgba(22,31,56,.08);
@@ -113,6 +119,8 @@ body.toque #controlesToque { display: block; }
 @media (max-width: 600px) {
   #hudTitulo { font-size: 15px; }
   #hudTema { display: none; }
+  .hud-cartao { min-width: 0; padding: 8px 10px; }
+  #btnMenu { padding: 10px 10px; }
   #dicaInteracao { bottom: 30%; font-size: 13px; }
 }
 
@@ -172,3 +180,62 @@ body.texto-grande .dica-texto { font-size: 24px; }
 .res-pontos tr.total td { border-bottom: 0; font-family: var(--fonte-titulo); font-size: 22px; color: var(--navy); }
 .res-demo { font-size: 12px; opacity: .7; margin: 4px 0; }
 @media (max-width: 480px) { .res-grade { grid-template-columns: repeat(2, 1fr); } }
+
+/* ── Texto grande ──────────────────────────────────────────── */
+body.texto-grande { font-size: 18px; }
+body.texto-grande .dica-texto { font-size: 25px; }
+body.texto-grande .casinha { width: 54px; height: 62px; font-size: 32px; }
+body.texto-grande #dicaInteracao, body.texto-grande #aviso { font-size: 18px; }
+body.texto-grande .pista2d { font-size: 17px; }
+body.texto-grande .hud-linha { font-size: 15px; }
+
+/* ── Menu ──────────────────────────────────────────────────── */
+.painel-menu { width: min(760px, 100%); max-height: 92vh; overflow: auto; }
+.menu-colunas { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.menu-colunas h3 { font-family: var(--fonte-titulo); font-size: 18px; margin: 4px 0 8px; color: var(--verde); }
+.botao.largo { display: block; width: 100%; text-align: left; margin-bottom: 8px; }
+@media (max-width: 640px) { .menu-colunas { grid-template-columns: 1fr; } }
+.ajuda-lista { padding-left: 22px; line-height: 1.55; font-size: 15px; }
+.ajuda-lista li { margin-bottom: 8px; }
+.ajuda-lista kbd, .mapa-ajuda kbd { background: var(--navy); color: var(--papel); border-radius: 5px; padding: 1px 6px; font-family: inherit; font-size: 12px; }
+
+/* ── Avatar ────────────────────────────────────────────────── */
+.sobreposicao.lateral { justify-content: flex-end; background: linear-gradient(90deg, rgba(22,31,56,0) 0%, rgba(22,31,56,.35) 100%); }
+.painel-avatar { width: min(420px, 100%); max-height: 92vh; overflow: auto; }
+.av-grupo { border: 0; padding: 0; margin: 0 0 14px; }
+.av-grupo legend { font-weight: 700; font-size: 14px; margin-bottom: 6px; color: var(--verde); }
+.av-linha { display: flex; flex-wrap: wrap; gap: 8px; }
+.av-opcao { width: 40px; height: 40px; border-radius: 50%; border: 3px solid rgba(22,31,56,.15); cursor: pointer; padding: 0; position: relative; }
+.av-opcao.texto { width: auto; border-radius: 12px; padding: 8px 12px; background: #fff; font-weight: 600; font-size: 14px; }
+.av-opcao.selecionada { border-color: var(--navy); box-shadow: 0 0 0 3px var(--dourado); }
+.av-opcao.selecionada:not(.texto)::after { content: '✓'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; text-shadow: 0 1px 3px rgba(0,0,0,.6); }
+.av-opcao:focus-visible { outline: 3px solid var(--dourado); outline-offset: 2px; }
+@media (max-width: 640px) { .sobreposicao.lateral { align-items: flex-end; justify-content: center; } .painel-avatar { max-height: 70vh; } }
+
+/* ── Mapa 2D ───────────────────────────────────────────────── */
+.painel-mapa { width: min(1000px, 100%); max-height: 94vh; overflow: auto; }
+.painel-mapa h2 { margin: 0; }
+.mapa-ajuda { font-size: 13px; opacity: .75; margin: 2px 0 12px; }
+.mapa-corpo { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 20px; align-items: start; }
+.mapa-grade-wrap { overflow: auto; max-width: 100%; }
+.grade2d { border-collapse: separate; border-spacing: 3px; }
+.painel-mapa { --cel2d: 40px; }
+.grade2d td { width: var(--cel2d); height: var(--cel2d); padding: 0; }
+.grade2d td.vazia { background: transparent; }
+.cel2d { width: var(--cel2d); height: var(--cel2d); border-radius: 8px; border: 2px solid rgba(22,31,56,.3); background: #fff; position: relative; cursor: pointer; font-family: var(--fonte-titulo); font-weight: 700; font-size: calc(var(--cel2d) * 0.5); color: var(--navy); padding: 0; }
+.cel2d sup { position: absolute; left: 3px; top: 1px; font-size: 9px; font-family: var(--fonte-texto); font-weight: 700; color: var(--verde); }
+.cel2d.revelada { background: #E8F0EC; border-color: var(--verde); }
+.cel2d.resolvida { background: #FFF3D6; border-color: var(--dourado); }
+.cel2d:hover { border-color: var(--navy); }
+.cel2d:focus-visible { outline: 3px solid var(--dourado); outline-offset: 1px; }
+.mapa-pistas h3 { font-family: var(--fonte-titulo); font-size: 17px; margin: 0 0 6px; color: var(--verde); }
+.pistas-lista { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.pista2d { text-align: left; background: #fff; border: 2px solid rgba(22,31,56,.15); border-radius: 10px; padding: 8px 10px; cursor: pointer; font-size: 14px; line-height: 1.35; }
+.pista2d b { color: var(--verde); margin-right: 4px; }
+.pista2d small { opacity: .6; }
+.pista2d.resolvida { background: #FFF3D6; border-color: var(--dourado); text-decoration: line-through; text-decoration-color: rgba(22,31,56,.35); }
+.pista2d.trancada { opacity: .7; }
+.pista2d:hover { border-color: var(--navy); }
+.pista2d:focus-visible { outline: 3px solid var(--dourado); }
+#painelDica { z-index: 45; }
+@media (max-width: 760px) { .mapa-corpo { grid-template-columns: 1fr; } }

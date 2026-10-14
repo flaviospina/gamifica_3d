@@ -22,6 +22,9 @@ import { ArmazenamentoLocal } from './progresso.js';
 import { calcularPontuacao, formatarTempo } from './pontuacao.js';
 import { mensagem } from './mensagens.js';
 import { ehToque, prefs } from './util.js';
+import { Audio } from './audio.js';
+import { TelaAvatar } from './avatar.js';
+import { Mapa2D } from './mapa2d.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -54,6 +57,8 @@ class Jogo {
     this.xp = Number(this.cruzadinha.xp) || 100;
     this.desafio = this.cruzadinha.desafioTempo || { ativo: false, segundos: 0 };
     this.terminada = false;
+    this.modo = '3d';                 // '3d' ou '2d' (para estatística)
+    this.audio = new Audio();
   }
 
   async iniciar() {
@@ -84,12 +89,17 @@ class Jogo {
     const atlas = await criarAtlasLetras();
     this.blocos = new BlocosLetra(this.scene, this.mundo.grade, atlas, this.qualidade, { bloco: tema.cores.ladrilho });
     this.particulas = new Particulas(this.scene, 260, this.reduzirMovimento ? 0 : this.qualidade.particulas);
-    this.blocos.on('pousou', ({ x, y, z }) => this.particulas.explodir(x, y, z, { quantidade: 12, forca: 2.2, cores: ['#E0A537', '#FBF7EF', tema.cores.copa] }));
+    let kEncaixe = 0;
+    this.blocos.on('pousou', ({ x, y, z }) => { this.particulas.explodir(x, y, z, { quantidade: 12, forca: 2.2, cores: ['#E0A537', '#FBF7EF', tema.cores.copa] }); this.audio.encaixe(kEncaixe++); });
 
     carregamento.progresso(80, 'Chamando o explorador…');
-    this.personagem = new Personagem(this.scene, this.dados.avatar || {});
+    const avatarSalvo = this.dados.avatar || TelaAvatar.carregarSalvo() || {};
+    this.personagem = new Personagem(this.scene, avatarSalvo);
     this.personagem.colocarEm(this.mundo.pontoInicial, Math.PI);
-    this.personagem.on('agua', () => this._aviso(mensagem('agua')));
+    this.personagem.on('agua', () => { this._aviso(mensagem('agua')); this.audio.agua(); });
+    this.personagem.on('passo', () => this.audio.passo());
+    this.personagem.on('pulo', () => this.audio.pulo());
+    this.personagem.on('pouso', () => this.audio.pouso());
 
     this.cameraJogo = new CameraJogo(window.innerWidth / window.innerHeight);
     this.cameraJogo.reduzirMovimento = this.reduzirMovimento;
@@ -100,13 +110,25 @@ class Jogo {
     });
     this.controles.on('girar', (dx, dy) => { if (!this.cameraJogo.orbita) this.cameraJogo.girar(dx, dy); });
     this.controles.on('zoom', (d) => this.cameraJogo.zoom(d));
-    this.controles.on('menu', () => { if (this.painel.aberto) this.painel.fechar(); else this._alternarMenu(); });
+    this.controles.on('menu', () => {
+      if (this.painel.aberto) this.painel.fechar();
+      else if (this.mapa.aberto) this.mapa.fechar();
+      else if (!$('ajuda').hidden) this._fecharAjuda();
+      else if (this.telaAvatar.aberta) this.telaAvatar.confirmar();
+      else this._alternarMenu();
+    });
     this.controles.on('interagir', () => this._interagir());
+    window.addEventListener('keydown', (ev) => {
+      if (ev.code === 'KeyM' && !/^(INPUT|TEXTAREA|SELECT)$/.test(ev.target?.tagName || '') && !this.painel.aberto && !this.telaAvatar.aberta && !this.celebracao.ativa) {
+        ev.preventDefault(); this.mapa.aberto ? this.mapa.fechar() : this._abrirMapa();
+      }
+    });
 
     // Progressão por zonas (pilares) e celebração
     this.progressao = new Progressao({ scene: this.scene, mundo: this.mundo, estado: this.estado, colisao: this.mundo.colisao, cores: tema.cores });
     this.progressao.on('zonaAberta', ({ totens }) => {
       this._aviso(mensagem('zonaAberta') + ' (' + totens.map(t => t.numero).join(', ') + ')', 3800);
+      this.audio.zona();
       for (const t of totens) this.particulas.explodir(t.grupo.position.x, 2.4, t.grupo.position.z, { quantidade: 24, forca: 3, cores: ['#E0A537', '#FBF7EF'] });
     });
     this.celebracao = new Celebracao({
@@ -121,14 +143,32 @@ class Jogo {
     }, this.estado, {
       aoResponder: (i, letras) => this._responder(i, letras),
       aoDica: (i) => this._revelar(i),
-      aoFechar: () => { this.controles.ativo = true; canvas.focus({ preventScroll: true }); },
+      aoFechar: () => { this.audio.fecharPainel(); if (this.mapa.aberto) { this.mapa.atualizar(); $('btnFecharMapa').focus(); } else { this.controles.ativo = true; canvas.focus({ preventScroll: true }); } },
       aoOuvir: (txt) => this._falar(txt),
+    });
+    $('entradaResposta').addEventListener('input', () => this.audio.tecla());
+
+    // Mapa 2D (acessibilidade): mesma lógica e pontuação
+    this.mapa = new Mapa2D({
+      raiz: $('mapa2d'), grade: $('grade2d'), pistasH: $('pistasH'), pistasV: $('pistasV'), btnFechar: $('btnFecharMapa'), status: $('mapaStatus'),
+    }, this.estado, this.layout, {
+      aoAbrirPalavra: (i) => { this.modo = '2d'; this.audio.abrirPainel(); this.painel.abrir(i); },
+      faltam: (i) => { const t = this.mundo.totens.find(t => t.dados.palavra === i); return t ? this.progressao.faltam(t) : 0; },
+      aoFechar: () => { this.controles.ativo = true; canvas.focus({ preventScroll: true }); },
+    });
+
+    // Personalização do explorador
+    this.telaAvatar = new TelaAvatar({ raiz: $('telaAvatar'), opcoes: $('avatarOpcoes'), btnComecar: $('btnAvatarComecar'), btnAleatorio: $('btnAvatarAleatorio') }, avatarSalvo, {
+      aoMudar: (v) => { this.personagem.aplicarVisual(v); this.audio.clique(); },
+      aoConfirmar: (v) => { this.personagem.aplicarVisual(v); this.cameraJogo.orbita = null; this.controles.ativo = true; this.armazenamento.salvarAvatar?.(v); canvas.focus({ preventScroll: true }); },
     });
 
     // Eventos do estado → mundo 3D
     this.estado.on('palavraResolvida', ({ indice, origem, novas }) => this._aoResolver(indice, origem, novas));
     this.estado.on('letraRevelada', ({ l, c, letra }) => { this.blocos.mostrar(l, c, letra, { atraso: 0 }); this._salvarProgresso(); });
     this.estado.on('concluida', () => setTimeout(() => this._concluir(), 1400));
+    this.estado.on('palavraResolvida', () => { if (this.mapa.aberto) this.mapa.atualizar(); });
+    this.estado.on('letraRevelada', () => { if (this.mapa.aberto) this.mapa.atualizar(); });
 
     // Progresso parcial
     this.armazenamento = new ArmazenamentoLocal((this.cruzadinha.titulo || 'demo').replace(/\W+/g, '_'));
@@ -145,7 +185,29 @@ class Jogo {
     this.renderer.compile(this.scene, this.cameraJogo.camera);
     carregamento.concluir();
     this.renderer.setAnimationLoop(() => this._quadro());
+    if (!prefs.ler('avatarConfirmado', false) && !this.estado.concluida) this._abrirAvatar();
   }
+
+  _abrirAvatar() {
+    this.controles.ativo = false;
+    const p = this.personagem.posicao;
+    const estreito = matchMedia('(max-width: 640px)').matches;
+    // Câmera de frente para o personagem; no desktop ele fica à esquerda (painel à direita),
+    // no celular fica em cima (painel embaixo).
+    this.cameraJogo.orbita = estreito
+      ? { centro: new THREE.Vector3(p.x, p.y + 0.75, p.z), distancia: 4.4, pitch: 0.08, parado: true }
+      : { centro: new THREE.Vector3(p.x - 0.7, p.y + 0.95, p.z), distancia: 3.6, pitch: 0.12, parado: true };
+    this.cameraJogo.yaw = this.personagem.angulo;
+    this.telaAvatar.abrir();
+  }
+
+  _abrirMapa() {
+    if (this.celebracao.ativa) return;
+    this.controles.ativo = false;
+    this.mapa.abrir();
+  }
+
+  _fecharAjuda() { $('ajuda').hidden = true; if ($('menu').hidden) { this.controles.ativo = true; } else $('btnComoJogar').focus(); }
 
   _respirar() { return new Promise(r => setTimeout(r, 30)); }
 
@@ -161,13 +223,16 @@ class Jogo {
     if (r.certa) {
       const ganhouEstrela = this.estado.estrelas > antesEstrelas;
       r.mensagem = ganhouEstrela ? mensagem('acertoEstrela') : mensagem('acerto');
-    }
+      this.audio.acerto();
+      if (ganhouEstrela) this.audio.estrela();
+    } else this.audio.quase();
     this._salvarProgresso();
     return r;
   }
 
   _revelar(indice) {
     const r = this.estado.revelarLetra(indice);
+    if (r) this.audio.dica();
     this._salvarProgresso();
     return r;
   }
@@ -199,6 +264,8 @@ class Jogo {
     const indice = t.dados.palavra;
     if (this.estado.resolvidas.has(indice)) { this._aviso('Essa palavra já está no lugar! ✅ Procure outro totem.', 2600); return; }
     this.controles.ativo = false;
+    this.modo = '3d';
+    this.audio.abrirPainel();
     this.painel.abrir(indice);
   }
 
@@ -224,7 +291,10 @@ class Jogo {
     if (this.terminada) return;
     this.terminada = true;
     this.painel.fechar();
+    this.mapa.fechar();
+    this.telaAvatar.aberta && this.telaAvatar.confirmar();
     this.controles.ativo = false;
+    this.audio.celebracao();
     $('dicaInteracao').hidden = true;
     this._salvarProgresso();
     this._aviso(mensagem('final', this.dados.jogador.nome), 5000);
@@ -250,7 +320,7 @@ class Jogo {
   }
 
   _resumo() {
-    return { ...this.estado.serializar(), tempoSeg: Math.round(this.tempoJogo), pontuacao: this._pontuacao(), modo: '3d' };
+    return { ...this.estado.serializar(), tempoSeg: Math.round(this.tempoJogo), pontuacao: this._pontuacao(), modo: this.modo };
   }
 
   _pontuacao() {
@@ -313,6 +383,21 @@ class Jogo {
       this.particulas.fator = this.reduzirMovimento ? 0 : this.qualidade.particulas;
       prefs.gravar('reduzirMovimento', this.reduzirMovimento);
     });
+    const textoGrande = prefs.ler('textoGrande', false);
+    document.body.classList.toggle('texto-grande', textoGrande);
+    $('chkTextoGrande').checked = textoGrande;
+    $('chkTextoGrande').addEventListener('change', (ev) => { document.body.classList.toggle('texto-grande', ev.target.checked); prefs.gravar('textoGrande', ev.target.checked); });
+    const refletirSom = () => { $('btnSom').textContent = this.audio.somLigado ? '🔊' : '🔇'; $('btnSom').setAttribute('aria-pressed', String(this.audio.somLigado)); $('chkSom').checked = this.audio.somLigado; };
+    refletirSom();
+    $('btnSom').addEventListener('click', () => { this.audio.ligarSom(!this.audio.somLigado); refletirSom(); this.audio.clique(); });
+    $('chkSom').addEventListener('change', (ev) => { this.audio.ligarSom(ev.target.checked); refletirSom(); });
+    $('chkMusica').checked = this.audio.musicaLigada;
+    $('chkMusica').addEventListener('change', (ev) => this.audio.ligarMusica(ev.target.checked));
+    $('btnMapa').addEventListener('click', () => { this._alternarMenu(false); this._abrirMapa(); });
+    $('btnMenuMapa').addEventListener('click', () => { this._alternarMenu(false); this._abrirMapa(); });
+    $('btnMenuAvatar').addEventListener('click', () => { this._alternarMenu(false); this._abrirAvatar(); });
+    $('btnComoJogar').addEventListener('click', () => { $('ajuda').hidden = false; $('btnFecharAjuda').focus(); });
+    $('btnFecharAjuda').addEventListener('click', () => this._fecharAjuda());
     $('chkToque').checked = ehToque();
     $('chkToque').addEventListener('change', (ev) => document.body.classList.toggle('toque', ev.target.checked));
     $('btnMenu').addEventListener('click', () => this._alternarMenu());
@@ -326,6 +411,7 @@ class Jogo {
 
   _atualizarHud() {
     $('hudPalavras').textContent = `${this.estado.resolvidas.size}/${this.estado.total} palavras`;
+    $('hudBarra').style.width = `${Math.round(100 * this.estado.resolvidas.size / Math.max(1, this.estado.total))}%`;
     $('hudEstrelas').textContent = `⭐ ${this.estado.estrelas}`;
     $('hudPontos').textContent = `${this._pontuacao().total} pts`;
   }
@@ -334,8 +420,8 @@ class Jogo {
     const menu = $('menu');
     const abrir = forcar ?? menu.hidden;
     menu.hidden = !abrir;
-    this.controles.ativo = !abrir && !this.painel.aberto;
-    if (abrir) $('btnFecharMenu').focus();
+    this.controles.ativo = !abrir && !this.painel.aberto && !this.mapa.aberto && !this.telaAvatar.aberta;
+    if (abrir) { this.audio.clique(); $('btnFecharMenu').focus(); }
   }
 
   _aviso(texto, ms = 2600) {
@@ -358,7 +444,7 @@ class Jogo {
     const dt = Math.min(dtReal, 0.05); // evita "saltos" quando a aba fica lenta
 
     const menuAberto = !$('menu').hidden;
-    const bloqueado = menuAberto || this.painel.aberto || this.celebracao.ativa;
+    const bloqueado = menuAberto || this.painel.aberto || this.celebracao.ativa || this.mapa.aberto || this.telaAvatar.aberta || !$('ajuda').hidden;
     if (!bloqueado && !this.terminada) {
       this.tempoJogo += dt;
       if (this.desafio.ativo) $('hudTempo').textContent = `⏱ ${formatarTempo(Math.max(0, this.desafio.segundos - this.tempoJogo))}`;
@@ -377,7 +463,7 @@ class Jogo {
     this.celebracao.atualizar(dt);
     if (!this.celebracao.ativa) this._atualizarTotens();
     this.cameraJogo.atualizar(dt, this.personagem.posicao, this.mundo.colisao.malhasCamera);
-    this.renderer.render(this.scene, this.cameraJogo.camera);
+    if (!this.mapa.aberto) this.renderer.render(this.scene, this.cameraJogo.camera); // mapa 2D: poupa GPU/bateria
 
     const fps = this.fps;
     fps.quadros++; fps.tempo += dtReal;

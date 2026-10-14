@@ -320,7 +320,9 @@ export class Personagem {
 
     let swing = 0, bracoAlvo = 0, bracoLateral = 0, bob = 0, inclinar = 0;
     if (E === 'andando') {
+      const antes = Math.floor(this.faseAndar / Math.PI);
       this.faseAndar += dt * 9 * (0.5 + mag * 0.5);
+      if (Math.floor(this.faseAndar / Math.PI) !== antes && this.noChao) this._emitir('passo');
       swing = Math.sin(this.faseAndar) * 0.75 * mag;
       bob = Math.abs(Math.sin(this.faseAndar)) * 0.05 * mag;
       inclinar = 0.08 * mag;

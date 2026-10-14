@@ -7,7 +7,7 @@
 //  (este arquivo passa a carregar a cruzadinha da atividade e injetar
 //  os dados no bloco #dadosJogo).
 // ============================================================
-$versao = '0.3.1';               // mude para invalidar o cache dos arquivos js/css
+$versao = '0.4.0';               // mude para invalidar o cache dos arquivos js/css
 $three  = '0.186.1';             // mesma versão de js/config.js
 
 // URL absoluta desta pasta (necessária para as metatags de compartilhamento:
@@ -97,18 +97,23 @@ $dados  = [
 
 <!-- HUD -->
 <div id="hudTopo" class="hud">
-  <div class="cartao">
+  <div class="cartao hud-cartao">
     <div id="hudTitulo">Ilha das Palavras</div>
     <div id="hudTema"></div>
+    <div class="hud-progresso" aria-hidden="true"><div id="hudBarra"></div></div>
     <div class="hud-linha"><span id="hudPalavras"></span> <span id="hudEstrelas" title="Estrelas de autonomia">⭐ 0</span> <span id="hudPontos">0 pts</span> <span id="hudTempo" hidden></span></div>
   </div>
-  <button id="btnMenu" class="botao" type="button" aria-haspopup="dialog">☰ Menu</button>
+  <div class="hud-botoes">
+    <button id="btnMapa" class="botao redondo" type="button" title="Mapa 2D (M)" aria-label="Abrir mapa 2D da cruzadinha">🗺️</button>
+    <button id="btnSom" class="botao redondo" type="button" title="Som" aria-label="Ligar ou desligar os sons" aria-pressed="true">🔊</button>
+    <button id="btnMenu" class="botao" type="button" aria-haspopup="dialog">☰ Menu</button>
+  </div>
 </div>
 <div id="dicaInteracao" class="hud" hidden>Totem por perto! <kbd>E</kbd> para ver a dica</div>
 <div id="aviso" class="hud" role="status" aria-live="polite" hidden></div>
 <div id="hudAjuda" class="hud">
-  <kbd>W A S D</kbd> ou setas: andar · <kbd>Espaço</kbd>: pular<br>
-  <kbd>E</kbd> ou <kbd>Enter</kbd>: interagir · arraste o mouse: girar · roda: zoom · <kbd>Esc</kbd>: menu
+  <kbd>W A S D</kbd> ou setas: andar · <kbd>Espaço</kbd>: pular · <kbd>E</kbd>: totem<br>
+  arraste o mouse: girar · roda: zoom · <kbd>M</kbd>: mapa 2D · <kbd>Esc</kbd>: menu
 </div>
 <div id="hudFps" hidden>— fps</div>
 
@@ -171,18 +176,81 @@ $dados  = [
 
 <!-- Menu -->
 <div id="menu" class="sobreposicao" role="dialog" aria-modal="true" aria-labelledby="menuTitulo" hidden>
-  <div class="painel">
+  <div class="painel painel-menu">
     <h2 id="menuTitulo">Opções</h2>
-    <label>Qualidade gráfica
-      <select id="selQualidade"><option value="baixa">Baixa</option><option value="media">Média</option><option value="alta">Alta</option></select>
-    </label>
-    <label>Reduzir movimento da câmera <input type="checkbox" id="chkMovimento"></label>
-    <label>Mostrar controles de toque <input type="checkbox" id="chkToque"></label>
-    <div class="acoes">
-      <button id="btnVoltarInicio" class="botao secundario" type="button">Voltar ao início da ilha</button>
-      <button id="btnReiniciar" class="botao secundario" type="button">Recomeçar cruzadinha</button>
-      <button id="btnFecharMenu" class="botao" type="button">Continuar</button>
+    <div class="menu-colunas">
+      <div>
+        <h3>Jogo</h3>
+        <button id="btnMenuMapa" class="botao secundario largo" type="button">🗺️ Mapa 2D da cruzadinha</button>
+        <button id="btnMenuAvatar" class="botao secundario largo" type="button">🧑 Mudar meu explorador</button>
+        <button id="btnComoJogar" class="botao secundario largo" type="button">❓ Como jogar</button>
+        <button id="btnVoltarInicio" class="botao secundario largo" type="button">🏝️ Voltar ao início da ilha</button>
+        <button id="btnReiniciar" class="botao secundario largo" type="button">🔄 Recomeçar cruzadinha</button>
+      </div>
+      <div>
+        <h3>Acessibilidade e som</h3>
+        <label>Qualidade gráfica
+          <select id="selQualidade"><option value="baixa">Baixa</option><option value="media">Média</option><option value="alta">Alta</option></select>
+        </label>
+        <label>Sons do jogo <input type="checkbox" id="chkSom"></label>
+        <label>Música ambiente <input type="checkbox" id="chkMusica"></label>
+        <label>Texto maior nas dicas <input type="checkbox" id="chkTextoGrande"></label>
+        <label>Reduzir movimento (câmera e partículas) <input type="checkbox" id="chkMovimento"></label>
+        <label>Mostrar controles de toque <input type="checkbox" id="chkToque"></label>
+      </div>
     </div>
+    <div class="acoes">
+      <button id="btnFecharMenu" class="botao" type="button">Continuar jogando</button>
+    </div>
+  </div>
+</div>
+
+<!-- Como jogar -->
+<div id="ajuda" class="sobreposicao" role="dialog" aria-modal="true" aria-labelledby="ajudaTitulo" hidden>
+  <div class="painel">
+    <h2 id="ajudaTitulo">Como jogar</h2>
+    <ol class="ajuda-lista">
+      <li><b>Explore a ilha.</b> No computador: <kbd>W A S D</kbd> ou setas para andar, <kbd>Espaço</kbd> para pular, arraste o mouse para girar a câmera. No celular: joystick e botões.</li>
+      <li><b>Encontre os totens numerados.</b> Chegue perto, aperte <kbd>E</kbd> (ou toque em "Ver") e leia a dica. Pode ouvir a dica em voz alta.</li>
+      <li><b>Digite a resposta</b> nas casinhas e aperte <kbd>Enter</kbd>. Acertou? As letras caem do céu no tabuleiro!</li>
+      <li><b>Errou? Sem problema.</b> Nada é perdido. As letras na posição certa ficam douradas para ajudar.</li>
+      <li><b>Precisa de ajuda?</b> "Revelar uma letra" sempre funciona e não tira pontos. Resolver sem dica ganha uma ⭐ extra.</li>
+      <li><b>Abra caminhos.</b> Alguns totens ficam no alto de pilares: resolva palavras e eles descem.</li>
+      <li><b>Prefere a cruzadinha de sempre?</b> O mapa 2D (<kbd>M</kbd>) mostra a grade tradicional, clicável, com a mesma pontuação.</li>
+    </ol>
+    <div class="acoes"><button id="btnFecharAjuda" class="botao" type="button">Entendi!</button></div>
+  </div>
+</div>
+
+<!-- Personalização do explorador -->
+<div id="telaAvatar" class="sobreposicao lateral" role="dialog" aria-modal="true" aria-labelledby="avatarTitulo" hidden>
+  <div class="painel painel-avatar">
+    <h2 id="avatarTitulo">Monte seu explorador</h2>
+    <p class="res-sub">Escolha como você quer aparecer na ilha. Dá para mudar depois no menu.</p>
+    <div id="avatarOpcoes"></div>
+    <div class="acoes">
+      <button id="btnAvatarAleatorio" class="botao secundario" type="button">🎲 Surpresa</button>
+      <button id="btnAvatarComecar" class="botao dourado" type="button">Começar a explorar →</button>
+    </div>
+  </div>
+</div>
+
+<!-- Mapa 2D -->
+<div id="mapa2d" class="sobreposicao" role="dialog" aria-modal="true" aria-labelledby="mapaTitulo" hidden>
+  <div class="painel painel-mapa">
+    <div class="dica-cabecalho">
+      <h2 id="mapaTitulo">Mapa da cruzadinha</h2>
+      <button id="btnFecharMapa" class="botao secundario mini" type="button">Voltar ao 3D ✕</button>
+    </div>
+    <p class="mapa-ajuda">Clique em uma casa ou em uma pista para responder. Setas movem entre as casas; <kbd>Enter</kbd> abre.</p>
+    <div class="mapa-corpo">
+      <div class="mapa-grade-wrap"><table id="grade2d" class="grade2d" role="grid"></table></div>
+      <div class="mapa-pistas">
+        <h3>Horizontais →</h3><div id="pistasH" class="pistas-lista"></div>
+        <h3>Verticais ↓</h3><div id="pistasV" class="pistas-lista"></div>
+      </div>
+    </div>
+    <div id="mapaStatus" class="dica-mensagem" role="status" aria-live="polite"></div>
   </div>
 </div>
 
