@@ -18,6 +18,7 @@ export class CameraJogo {
     this.posicaoSuave = new THREE.Vector3();
     this.raycaster = new THREE.Raycaster();
     this.reduzirMovimento = false;
+    this.orbita = null;            // { centro, distancia, pitch } — usado na celebração
     this._primeiro = true;
     this._tmp = new THREE.Vector3();
   }
@@ -45,6 +46,17 @@ export class CameraJogo {
 
   atualizar(dt, posicaoPersonagem, malhasColisao) {
     const C = CONFIG.camera;
+    if (this.orbita) {
+      const o = this.orbita;
+      this.yaw += dt * (this.reduzirMovimento ? 0.12 : 0.35);
+      this.alvo.lerp(o.centro, suavizar(3, dt));
+      const dir = new THREE.Vector3(Math.sin(this.yaw) * Math.cos(o.pitch), Math.sin(o.pitch), Math.cos(this.yaw) * Math.cos(o.pitch));
+      const pos = dir.multiplyScalar(o.distancia).add(this.alvo);
+      this.posicaoSuave.lerp(pos, suavizar(3, dt));
+      this.camera.position.copy(this.posicaoSuave);
+      this.camera.lookAt(this.alvo);
+      return;
+    }
     const alvoDesejado = this._tmp.set(posicaoPersonagem.x, posicaoPersonagem.y + C.alturaAlvo, posicaoPersonagem.z);
     if (this._primeiro) { this.alvo.copy(alvoDesejado); }
     else this.alvo.lerp(alvoDesejado, suavizar(C.suavidade, dt));

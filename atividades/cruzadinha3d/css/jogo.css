@@ -99,7 +99,9 @@ body.toque #controlesToque { display: block; }
 #btnInteragir { right: 118px; bottom: 26px; background: var(--papel); }
 
 /* ── Menu (Esc) ────────────────────────────────────────────── */
-#menu { position: fixed; inset: 0; z-index: 40; background: rgba(22,31,56,.55); display: flex; align-items: center; justify-content: center; padding: 20px; }
+#menu, .sobreposicao { position: fixed; inset: 0; z-index: 40; background: rgba(22,31,56,.55); display: flex; align-items: center; justify-content: center; padding: 20px; }
+#painelDica { align-items: flex-end; }
+@media (min-width: 700px) { #painelDica { align-items: center; } }
 .painel { background: var(--papel); color: var(--navy); border-radius: 20px; padding: 24px; width: min(440px, 100%); box-shadow: 0 20px 60px rgba(0,0,0,.35); }
 .painel h2 { font-family: var(--fonte-titulo); font-size: 26px; margin: 0 0 14px; }
 .painel label { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(22,31,56,.1); font-weight: 500; }
@@ -113,3 +115,60 @@ body.toque #controlesToque { display: block; }
   #hudTema { display: none; }
   #dicaInteracao { bottom: 30%; font-size: 13px; }
 }
+
+/* ── HUD: linha de progresso ───────────────────────────────── */
+.hud-linha { display: flex; gap: 10px; flex-wrap: wrap; font-weight: 700; font-size: 13px; color: var(--verde); margin-top: 4px; }
+.hud-linha #hudPontos { color: var(--navy); }
+.hud-linha #hudTempo { color: #B5541D; font-variant-numeric: tabular-nums; }
+
+/* ── Painel da dica ────────────────────────────────────────── */
+.painel-dica { width: min(560px, 100%); }
+.dica-cabecalho { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 8px; }
+.dica-numero { font-family: var(--fonte-titulo); font-size: 28px; font-weight: 700; color: var(--verde); }
+.dica-botoes { display: flex; gap: 8px; }
+.botao.mini { padding: 6px 10px; font-size: 13px; }
+.dica-texto { font-size: 19px; line-height: 1.45; margin: 4px 0 16px; font-weight: 500; }
+body.texto-grande .dica-texto { font-size: 24px; }
+.casinhas-wrap { position: relative; }
+.casinhas { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; padding: 6px 0; cursor: text; min-height: 60px; }
+.casinha {
+  width: 46px; height: 54px; border-radius: 12px; border: 3px solid rgba(22,31,56,.25); background: #fff;
+  display: flex; align-items: center; justify-content: center; font-family: var(--fonte-titulo); font-size: 28px; font-weight: 700; color: var(--navy);
+  transition: transform .15s ease, border-color .15s ease, background .15s ease; position: relative;
+}
+.casinha.fixa { background: #E8F0EC; border-color: var(--verde); color: var(--verde); }
+.casinha.fixa::after { content: '🔒'; position: absolute; font-size: 10px; right: 3px; bottom: 2px; opacity: .7; }
+.casinha.certa { background: #FFF3D6; border-color: var(--dourado); color: #8A5A00; box-shadow: 0 0 0 3px rgba(224,165,55,.25); }
+.casinha.certa::after { content: '✓'; position: absolute; font-size: 11px; right: 4px; top: 2px; color: #8A5A00; font-family: var(--fonte-texto); }
+.casinha.cursor { border-color: var(--navy); border-style: dashed; animation: piscar 1s steps(2) infinite; }
+@keyframes piscar { 50% { border-color: rgba(22,31,56,.25); } }
+.casinhas.quicar .casinha:not(.fixa):not(.certa) { animation: quicar .5s ease; }
+@keyframes quicar { 0% { transform: translateY(0); } 30% { transform: translateY(-10px) scale(1.05); } 60% { transform: translateY(2px); } 100% { transform: translateY(0); } }
+.casinhas.acertou .casinha { animation: pulo .6s ease; background: #FFF3D6; border-color: var(--dourado); }
+.casinhas.acertou .casinha:nth-child(2n) { animation-delay: .08s; }
+@keyframes pulo { 0% { transform: scale(1); } 40% { transform: scale(1.18) rotate(-4deg); } 100% { transform: scale(1); } }
+.entrada-oculta { position: absolute; left: 0; top: 0; width: 100%; height: 100%; opacity: 0; font-size: 16px; border: 0; background: transparent; color: transparent; caret-color: transparent; }
+.entrada-oculta:focus { outline: none; }
+.casinhas-wrap:focus-within .casinhas { box-shadow: inset 0 0 0 2px rgba(40,100,86,.25); border-radius: 14px; }
+.dica-mensagem { min-height: 1.6em; text-align: center; font-weight: 700; color: var(--verde); margin: 8px 0 4px; font-size: 15px; }
+.dica-rodape { text-align: center; font-size: 12px; opacity: .7; margin-top: 10px; }
+.painel .acoes .botao.dourado { flex: 1.4; }
+@media (prefers-reduced-motion: reduce) { .casinha, .casinhas.quicar .casinha, .casinhas.acertou .casinha { animation: none !important; transition: none; } }
+@media (max-width: 420px) { .casinha { width: 38px; height: 46px; font-size: 22px; } .dica-texto { font-size: 17px; } }
+
+/* ── Resultado ─────────────────────────────────────────────── */
+.painel-resultado { text-align: center; width: min(520px, 100%); }
+.res-trofeu { font-size: 56px; animation: flutuar2 2s ease-in-out infinite; }
+@keyframes flutuar2 { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+.painel-resultado h2 { font-family: var(--fonte-titulo); font-size: 30px; margin: 4px 0 2px; }
+.res-sub { margin: 0 0 14px; opacity: .8; }
+.res-grade { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 0 0 14px; }
+.res-grade div { background: #fff; border-radius: 12px; padding: 10px 6px; }
+.res-grade dt { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; opacity: .7; }
+.res-grade dd { margin: 2px 0 0; font-family: var(--fonte-titulo); font-size: 24px; font-weight: 700; }
+.res-pontos { width: 100%; border-collapse: collapse; font-size: 15px; margin-bottom: 10px; }
+.res-pontos td { padding: 6px 4px; border-bottom: 1px solid rgba(22,31,56,.1); text-align: left; }
+.res-pontos td:last-child { text-align: right; font-weight: 700; color: var(--verde); }
+.res-pontos tr.total td { border-bottom: 0; font-family: var(--fonte-titulo); font-size: 22px; color: var(--navy); }
+.res-demo { font-size: 12px; opacity: .7; margin: 4px 0; }
+@media (max-width: 480px) { .res-grade { grid-template-columns: repeat(2, 1fr); } }

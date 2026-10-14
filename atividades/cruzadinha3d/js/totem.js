@@ -54,19 +54,22 @@ export function criarTotem({ numero, cor = '#286456', corAceso = '#E0A537' }) {
 
   const corAcesoObj = new THREE.Color(corAceso);
   const corBase = new THREE.Color(cor);
-  let aceso = false, nivel = 0, resolvido = false;
+  let aceso = false, nivel = 0, resolvido = false, bloqueado = false;
+  const corBloqueado = new THREE.Color('#8E939B');
 
   return {
     grupo, numero,
     get aceso() { return aceso; },
     get nivel() { return nivel; },
     acender(v) { aceso = v; },
+    bloquear(v) { bloqueado = v; },
+    get bloqueado() { return bloqueado; },
     marcarResolvido() { resolvido = true; matPoste.color.set(corAceso); },
     atualizar(dt, t) {
       const alvo = aceso ? 1 : 0;
       nivel += (alvo - nivel) * Math.min(1, dt * 6);
-      matGema.emissive.copy(corAcesoObj).multiplyScalar(nivel * 1.2);
-      matGema.color.copy(corBase).lerp(corAcesoObj, nivel);
+      matGema.emissive.copy(corAcesoObj).multiplyScalar(bloqueado ? nivel * 0.2 : nivel * 1.2);
+      matGema.color.copy(bloqueado ? corBloqueado : corBase).lerp(corAcesoObj, bloqueado ? nivel * 0.3 : nivel);
       gema.position.y = Math.sin(t * 2.5) * 0.04 * (0.4 + nivel);
       gema.scale.setScalar(1 + nivel * 0.25 + Math.sin(t * 6) * 0.03 * nivel);
       cabeca.rotation.y = aceso ? Math.sin(t * 2) * 0.08 : 0;

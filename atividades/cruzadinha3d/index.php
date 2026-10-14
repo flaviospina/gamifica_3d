@@ -7,7 +7,7 @@
 //  (este arquivo passa a carregar a cruzadinha da atividade e injetar
 //  os dados no bloco #dadosJogo).
 // ============================================================
-$versao = '0.2.2';               // mude para invalidar o cache dos arquivos js/css
+$versao = '0.3.0';               // mude para invalidar o cache dos arquivos js/css
 $three  = '0.186.1';             // mesma versão de js/config.js
 $dados  = [
   'modo'    => 'demo',
@@ -55,7 +55,7 @@ $dados  = [
   <div class="cartao">
     <div id="hudTitulo">Ilha das Palavras</div>
     <div id="hudTema"></div>
-    <div id="hudPalavras"></div>
+    <div class="hud-linha"><span id="hudPalavras"></span> <span id="hudEstrelas" title="Estrelas de autonomia">⭐ 0</span> <span id="hudPontos">0 pts</span> <span id="hudTempo" hidden></span></div>
   </div>
   <button id="btnMenu" class="botao" type="button" aria-haspopup="dialog">☰ Menu</button>
 </div>
@@ -74,8 +74,58 @@ $dados  = [
   <button id="btnInteragir" class="btnToque" type="button"><span>✦</span>Ver</button>
 </div>
 
+<!-- Painel da dica -->
+<div id="painelDica" class="sobreposicao" role="dialog" aria-modal="true" aria-labelledby="dicaNumero" hidden>
+  <div class="painel painel-dica">
+    <div class="dica-cabecalho">
+      <span id="dicaNumero" class="dica-numero">1 →</span>
+      <div class="dica-botoes">
+        <button id="btnOuvir" class="botao secundario mini" type="button" title="Ouvir a dica" aria-label="Ouvir a dica">🔊 Ouvir</button>
+        <button id="btnFecharDica" class="botao secundario mini" type="button" aria-label="Fechar painel">✕</button>
+      </div>
+    </div>
+    <p id="dicaTexto" class="dica-texto"></p>
+    <div class="casinhas-wrap">
+      <div id="casinhas" class="casinhas" aria-live="polite"></div>
+      <input id="entradaResposta" class="entrada-oculta" type="text" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" inputmode="text" aria-label="Digite a resposta, uma letra por casa" enterkeyhint="done">
+    </div>
+    <div id="dicaMensagem" class="dica-mensagem" role="status" aria-live="polite"></div>
+    <div class="acoes">
+      <button id="btnRevelar" class="botao secundario" type="button">💡 Revelar uma letra</button>
+      <button id="btnResponder" class="botao dourado" type="button">Responder ✓</button>
+    </div>
+    <div class="dica-rodape">Dicas não tiram pontos. Resolver sem dica ganha uma ⭐ extra.</div>
+  </div>
+</div>
+
+<!-- Resultado final -->
+<div id="resultado" class="sobreposicao" role="dialog" aria-modal="true" aria-labelledby="resNome" hidden>
+  <div class="painel painel-resultado">
+    <div class="res-trofeu" aria-hidden="true">🏆</div>
+    <h2 id="resNome">Parabéns!</h2>
+    <p class="res-sub">Você completou a Ilha das Palavras.</p>
+    <dl class="res-grade">
+      <div><dt>Palavras</dt><dd id="resPalavras">0/0</dd></div>
+      <div><dt>Estrelas ⭐</dt><dd id="resEstrelas">0</dd></div>
+      <div><dt>Dicas usadas</dt><dd id="resDicas">0</dd></div>
+      <div><dt>Tempo</dt><dd id="resTempo">0:00</dd></div>
+    </dl>
+    <table class="res-pontos">
+      <tr><td>Palavras resolvidas</td><td id="resBase">0</td></tr>
+      <tr><td>Bônus de autonomia</td><td id="resBonusEstrelas">+0</td></tr>
+      <tr id="resBonusTempoLinha"><td>Bônus de tempo</td><td id="resBonusTempo">+0</td></tr>
+      <tr class="total"><td>Pontuação</td><td id="resTotal">0</td></tr>
+    </table>
+    <p id="resDemo" class="res-demo" hidden>Modo demonstração: nada foi gravado.</p>
+    <div class="acoes">
+      <button id="btnJogarDeNovo" class="botao secundario" type="button">Jogar de novo</button>
+      <button id="btnContinuarExplorando" class="botao" type="button">Continuar explorando</button>
+    </div>
+  </div>
+</div>
+
 <!-- Menu -->
-<div id="menu" role="dialog" aria-modal="true" aria-labelledby="menuTitulo" hidden>
+<div id="menu" class="sobreposicao" role="dialog" aria-modal="true" aria-labelledby="menuTitulo" hidden>
   <div class="painel">
     <h2 id="menuTitulo">Opções</h2>
     <label>Qualidade gráfica
@@ -85,6 +135,7 @@ $dados  = [
     <label>Mostrar controles de toque <input type="checkbox" id="chkToque"></label>
     <div class="acoes">
       <button id="btnVoltarInicio" class="botao secundario" type="button">Voltar ao início da ilha</button>
+      <button id="btnReiniciar" class="botao secundario" type="button">Recomeçar cruzadinha</button>
       <button id="btnFecharMenu" class="botao" type="button">Continuar</button>
     </div>
   </div>
