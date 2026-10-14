@@ -160,7 +160,7 @@ class Jogo {
     // Personalização do explorador
     this.telaAvatar = new TelaAvatar({ raiz: $('telaAvatar'), opcoes: $('avatarOpcoes'), btnComecar: $('btnAvatarComecar'), btnAleatorio: $('btnAvatarAleatorio') }, avatarSalvo, {
       aoMudar: (v) => { this.personagem.aplicarVisual(v); this.audio.clique(); },
-      aoConfirmar: (v) => { this.personagem.aplicarVisual(v); this.cameraJogo.orbita = null; this.controles.ativo = true; this.armazenamento.salvarAvatar?.(v); canvas.focus({ preventScroll: true }); },
+      aoConfirmar: (v) => { this.personagem.aplicarVisual(v); this.cameraJogo.orbita = null; this.cameraJogo.camera.clearViewOffset(); document.body.classList.remove('avatar-aberto'); this.controles.ativo = true; this.armazenamento.salvarAvatar?.(v); canvas.focus({ preventScroll: true }); },
     });
 
     // Eventos do estado → mundo 3D
@@ -195,8 +195,13 @@ class Jogo {
     // Câmera de frente para o personagem; no desktop ele fica à esquerda (painel à direita),
     // no celular fica em cima (painel embaixo).
     this.cameraJogo.orbita = estreito
-      ? { centro: new THREE.Vector3(p.x, p.y + 0.75, p.z), distancia: 4.4, pitch: 0.08, parado: true }
+      ? { centro: new THREE.Vector3(p.x, p.y + 0.95, p.z), distancia: 6.2, pitch: 0.1, parado: true }
       : { centro: new THREE.Vector3(p.x - 0.7, p.y + 0.95, p.z), distancia: 3.6, pitch: 0.12, parado: true };
+    // No celular o painel ocupa a parte de baixo: desloca o enquadramento para o personagem ficar em cima
+    const cam = this.cameraJogo.camera;
+    if (estreito) cam.setViewOffset(window.innerWidth, window.innerHeight, 0, Math.round(window.innerHeight * 0.26), window.innerWidth, window.innerHeight);
+    else cam.clearViewOffset();
+    document.body.classList.add('avatar-aberto');
     this.cameraJogo.yaw = this.personagem.angulo;
     this.telaAvatar.abrir();
   }

@@ -210,7 +210,7 @@ body.texto-grande .hud-linha { font-size: 15px; }
 .av-opcao.selecionada { border-color: var(--navy); box-shadow: 0 0 0 3px var(--dourado); }
 .av-opcao.selecionada:not(.texto)::after { content: '✓'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; text-shadow: 0 1px 3px rgba(0,0,0,.6); }
 .av-opcao:focus-visible { outline: 3px solid var(--dourado); outline-offset: 2px; }
-@media (max-width: 640px) { .sobreposicao.lateral { align-items: flex-end; justify-content: center; } .painel-avatar { max-height: 70vh; } }
+@media (max-width: 640px) { .sobreposicao.lateral { align-items: flex-end; justify-content: center; } .painel-avatar { max-height: 70vh; } body.avatar-aberto .hud-cartao { display: none; } }
 
 /* ── Mapa 2D ───────────────────────────────────────────────── */
 .painel-mapa { width: min(1000px, 100%); max-height: 94vh; overflow: auto; }
