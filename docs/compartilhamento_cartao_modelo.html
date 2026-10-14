@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8">
+<style>
+@font-face { font-family: 'Fraunces'; src: url('fontes/fraunces-latin-700-normal.woff2') format('woff2'); font-weight: 700; }
+@font-face { font-family: 'Inter'; src: url('fontes/inter-latin-500-normal.woff2') format('woff2'); font-weight: 500; }
+@font-face { font-family: 'Inter'; src: url('fontes/inter-latin-700-normal.woff2') format('woff2'); font-weight: 700; }
+@font-face { font-family: 'Inter'; src: url('fontes/inter-latin-800-normal.woff2') format('woff2'); font-weight: 800; }
+:root { --navy:#161F38; --papel:#FBF7EF; --verde:#286456; --dourado:#E0A537; }
+* { box-sizing: border-box; margin: 0; }
+body { font-family: 'Inter', sans-serif; background: #000; }
+.cartao { position: relative; overflow: hidden; background: var(--navy); color: var(--papel); }
+.fundo { position: absolute; inset: 0; background-size: cover; background-position: center; }
+.horizontal { width: 1200px; height: 630px; }
+.horizontal .fundo { background-image: url('cena_horizontal.png'); }
+.horizontal .veu { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(22,31,56,.96) 0%, rgba(22,31,56,.88) 38%, rgba(22,31,56,.35) 60%, rgba(22,31,56,0) 78%); }
+.horizontal .conteudo { position: absolute; left: 64px; top: 0; bottom: 0; width: 620px; display: flex; flex-direction: column; justify-content: center; gap: 18px; }
+.marca { display: inline-flex; align-items: center; gap: 10px; font-weight: 800; font-size: 20px; letter-spacing: .02em; color: var(--dourado); }
+.marca span { background: var(--dourado); color: var(--navy); border-radius: 10px; padding: 4px 10px; }
+h1 { font-family: 'Fraunces', Georgia, serif; font-weight: 700; line-height: .98; color: #fff; }
+.horizontal h1 { font-size: 86px; }
+.sub { font-size: 28px; font-weight: 500; line-height: 1.25; color: rgba(251,247,239,.9); }
+.chips { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 6px; }
+.chip { background: rgba(251,247,239,.14); border: 2px solid rgba(251,247,239,.35); border-radius: 999px; padding: 9px 16px; font-size: 19px; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; backdrop-filter: blur(4px); }
+.chip.ouro { background: var(--dourado); color: var(--navy); border-color: var(--dourado); }
+.chip.verde { background: var(--verde); border-color: var(--verde); }
+.emoji { font-family: 'Noto Color Emoji', sans-serif; }
+.rodape { position: absolute; right: 36px; bottom: 28px; background: rgba(22,31,56,.78); border-radius: 14px; padding: 10px 16px; font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+/* Quadrado */
+.quadrado { width: 1080px; height: 1080px; }
+.quadrado .fundo { background-image: url('cena_quadrada.png'); }
+.quadrado .veu { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(22,31,56,.55) 0%, rgba(22,31,56,0) 22%, rgba(22,31,56,0) 48%, rgba(22,31,56,.92) 72%, rgba(22,31,56,.98) 100%); }
+.quadrado .topo { position: absolute; top: 40px; left: 0; right: 0; display: flex; justify-content: center; }
+.quadrado .conteudo { position: absolute; left: 64px; right: 64px; bottom: 60px; display: flex; flex-direction: column; gap: 18px; align-items: center; text-align: center; }
+.quadrado h1 { font-size: 96px; }
+.quadrado .sub { font-size: 30px; }
+.quadrado .chips { justify-content: center; }
+.quadrado .chip { font-size: 21px; }
+/* Ícone */
+.icone { width: 512px; height: 512px; border-radius: 0; background: linear-gradient(160deg, #1f2b50, var(--navy)); display: flex; align-items: center; justify-content: center; position: relative; }
+.icone .bloco { width: 330px; height: 330px; background: var(--papel); border-radius: 64px; box-shadow: 0 24px 0 #cdbf9c, 0 40px 60px rgba(0,0,0,.4); display: flex; align-items: center; justify-content: center; font-family: 'Fraunces', serif; font-weight: 700; font-size: 250px; color: var(--navy); transform: translateY(-14px); }
+.icone .estrela { position: absolute; right: 62px; top: 56px; width: 120px; height: 120px; font-size: 100px; line-height: 120px; text-align: center; }
+.icone .ilha { position: absolute; left: 54px; bottom: 46px; width: 130px; height: 130px; font-size: 104px; line-height: 130px; text-align: center; }
+</style></head>
+<body>
+<div id="horizontal" class="cartao horizontal">
+  <div class="fundo"></div><div class="veu"></div>
+  <div class="conteudo">
+    <div class="marca"><span>Gamifica</span> atividade 3D</div>
+    <h1>Ilha das<br>Palavras</h1>
+    <div class="sub">A cruzadinha virou um mundo 3D: ande sobre o tabuleiro, encontre os totens e resolva as palavras.</div>
+    <div class="chips">
+      <div class="chip ouro"><span class="emoji">⭐</span> Sem punição, só conquistas</div>
+      <div class="chip verde"><span class="emoji">🔁</span> Tentativas ilimitadas</div>
+      <div class="chip"><span class="emoji">🏫</span> Ensino Fundamental</div>
+    </div>
+  </div>
+  <div class="rodape"><span class="emoji">📱</span> Celular, tablet e Chromebook · direto no navegador</div>
+</div>
+
+<div id="quadrado" class="cartao quadrado">
+  <div class="fundo"></div><div class="veu"></div>
+  <div class="topo"><div class="marca"><span>Gamifica</span> atividade 3D</div></div>
+  <div class="conteudo">
+    <h1>Ilha das Palavras</h1>
+    <div class="sub">A cruzadinha virou um mundo 3D para explorar.<br>Encontre os totens, resolva as palavras, abra caminhos.</div>
+    <div class="chips">
+      <div class="chip ouro"><span class="emoji">⭐</span> Sem punição</div>
+      <div class="chip verde"><span class="emoji">🔁</span> Tentativas ilimitadas</div>
+      <div class="chip"><span class="emoji">📱</span> Celular e Chromebook</div>
+    </div>
+  </div>
+</div>
+
+<div id="icone" class="icone">
+  <div class="bloco">A</div>
+  <div class="estrela emoji">⭐</div>
+  <div class="ilha emoji">🏝️</div>
+</div>
+</body></html>

@@ -7,8 +7,18 @@
 //  (este arquivo passa a carregar a cruzadinha da atividade e injetar
 //  os dados no bloco #dadosJogo).
 // ============================================================
-$versao = '0.3.0';               // mude para invalidar o cache dos arquivos js/css
+$versao = '0.3.1';               // mude para invalidar o cache dos arquivos js/css
 $three  = '0.186.1';             // mesma versão de js/config.js
+
+// URL absoluta desta pasta (necessária para as metatags de compartilhamento:
+// WhatsApp, Facebook, LinkedIn e X exigem endereços completos para as imagens).
+$https    = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
+$host     = $_SERVER['HTTP_HOST'] ?? 'localhost';
+$pasta    = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/')), '/');
+$urlBase  = ($https ? 'https' : 'http') . '://' . $host . $pasta;
+$urlPagina = $urlBase . '/index.php' . (isset($_GET['demo']) ? '?demo=1' : '');
+$descricao = 'A cruzadinha virou um mundo 3D: ande sobre o tabuleiro, encontre os totens e resolva as palavras. '
+           . 'Sem punição, tentativas ilimitadas. Funciona no celular, no tablet e no Chromebook, direto no navegador.';
 $dados  = [
   'modo'    => 'demo',
   'jogador' => ['nome' => 'Visitante'],
@@ -22,6 +32,41 @@ $dados  = [
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="theme-color" content="#161F38">
 <title>Ilha das Palavras — Gamifica</title>
+<meta name="description" content="<?= htmlspecialchars($descricao) ?>">
+
+<!-- Compartilhamento: Open Graph (WhatsApp, Facebook, LinkedIn, Telegram) -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Gamifica">
+<meta property="og:locale" content="pt_BR">
+<meta property="og:url" content="<?= htmlspecialchars($urlPagina) ?>">
+<meta property="og:title" content="Ilha das Palavras — a cruzadinha em 3D">
+<meta property="og:description" content="<?= htmlspecialchars($descricao) ?>">
+<meta property="og:image" content="<?= htmlspecialchars($urlBase) ?>/img/compartilhar-1200x630.jpg">
+<meta property="og:image:secure_url" content="<?= htmlspecialchars($urlBase) ?>/img/compartilhar-1200x630.jpg">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Ilha das Palavras: personagem explorando a cruzadinha 3D em uma ilha, com totens numerados e blocos de letras">
+<meta property="og:image" content="<?= htmlspecialchars($urlBase) ?>/img/compartilhar-1080x1080.jpg">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1080">
+<meta property="og:image:height" content="1080">
+<meta property="og:image:alt" content="Ilha das Palavras: cruzadinha 3D para explorar, sem punição e com tentativas ilimitadas">
+
+<!-- X / Twitter -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Ilha das Palavras — a cruzadinha em 3D">
+<meta name="twitter:description" content="<?= htmlspecialchars($descricao) ?>">
+<meta name="twitter:image" content="<?= htmlspecialchars($urlBase) ?>/img/compartilhar-1200x630.jpg">
+<meta name="twitter:image:alt" content="Ilha das Palavras: personagem explorando a cruzadinha 3D em uma ilha">
+
+<!-- Ícones -->
+<link rel="icon" type="image/png" sizes="32x32" href="img/icone-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="img/icone-192.png">
+<link rel="icon" href="img/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" sizes="180x180" href="img/icone-180.png">
+<meta name="apple-mobile-web-app-title" content="Ilha das Palavras">
+<meta name="application-name" content="Ilha das Palavras">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">

@@ -47,3 +47,15 @@ no cPanel e abrir com Ctrl+F5.
   "palavras": [ { "dica": "...", "resposta": "ÁGUA", "linha": 1, "coluna": 3, "direcao": "v" } ]
 }
 ```
+
+## Compartilhamento em redes sociais (0.3.1)
+
+- Metatags Open Graph e Twitter Card no `index.php`, com URLs absolutas calculadas pelo PHP
+  (funcionam em qualquer domínio/subpasta). Descrição e título sem menção a instituições.
+- Imagens em `atividades/cruzadinha3d/img/`: `compartilhar-1200x630.jpg` (WhatsApp, Facebook, LinkedIn, X),
+  `compartilhar-1080x1080.jpg` (Instagram, WhatsApp em alguns aparelhos), ícones `icone-512/192/180/32.png` e `favicon.ico`.
+- As imagens foram compostas a partir de capturas reais do jogo; o modelo HTML usado está em
+  `docs/compartilhamento_cartao_modelo.html` (para regerar com outra cena ou texto).
+- Para testar a prévia: cole o link em uma conversa do WhatsApp ou use o depurador de compartilhamento do
+  Facebook (developers.facebook.com/tools/debug) e o Card Validator do X. Se trocar a imagem, mude o nome do
+  arquivo, porque as redes guardam cache da imagem antiga.
