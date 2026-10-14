@@ -7,7 +7,7 @@
 //  (este arquivo passa a carregar a cruzadinha da atividade e injetar
 //  os dados no bloco #dadosJogo).
 // ============================================================
-$versao = '0.2.0';               // mude para invalidar o cache dos arquivos js/css
+$versao = '0.2.1';               // mude para invalidar o cache dos arquivos js/css
 $three  = '0.186.1';             // mesma versão de js/config.js
 $dados  = [
   'modo'    => 'demo',
@@ -90,14 +90,7 @@ $dados  = [
   </div>
 </div>
 
-<script type="module">
-  // Se o CDN falhar (sem internet ou bloqueado), mostra uma mensagem amigável.
-  import('./js/main.js?v=<?= $versao ?>').catch((err) => {
-    console.error(err);
-    const t = document.getElementById('carregamentoTexto');
-    document.getElementById('carregamento').classList.add('erro');
-    t.textContent = 'Não foi possível carregar o motor 3D. Verifique a conexão com a internet e tente de novo.';
-  });
-</script>
+<!-- Carregador externo: erros de CDN/CSP viram mensagem na tela -->
+<script type="module" src="js/boot.js?v=<?= $versao ?>"></script>
 </body>
 </html>
