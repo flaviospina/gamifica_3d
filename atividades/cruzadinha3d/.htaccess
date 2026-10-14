@@ -1,0 +1,19 @@
+# ============================================================
+#  .htaccess — atividades/cruzadinha3d
+#  Libera o Three.js do jsDelivr (o .htaccess da raiz do Gamifica
+#  bloqueia scripts externos). Vale só para esta pasta.
+# ============================================================
+<IfModule mod_headers.c>
+  Header always set Content-Security-Policy "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; connect-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; worker-src 'self' blob:; frame-ancestors 'self'"
+</IfModule>
+
+# Módulos ES precisam do MIME correto
+AddType application/javascript .js
+AddType application/json .json
+
+# Cache dos arquivos do jogo (altere o parâmetro ?v= no index.php ao publicar nova versão)
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType application/javascript "access plus 7 days"
+  ExpiresByType text/css "access plus 7 days"
+</IfModule>

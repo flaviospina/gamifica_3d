@@ -1,0 +1,115 @@
+/* ============================================================
+   css/jogo.css — Interface do jogo "Ilha das Palavras"
+   Paleta Gamifica: navy #161F38 · papel #FBF7EF · verde #286456 · dourado #E0A537
+   ============================================================ */
+:root {
+  --navy: #161F38;
+  --papel: #FBF7EF;
+  --verde: #286456;
+  --dourado: #E0A537;
+  --navy-80: rgba(22, 31, 56, .82);
+  --papel-90: rgba(251, 247, 239, .94);
+  --raio: 14px;
+  --fonte-titulo: 'Fraunces', Georgia, serif;
+  --fonte-texto: 'Inter', system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: var(--navy); color: var(--navy); font-family: var(--fonte-texto); }
+button, select, input { font-family: inherit; font-size: inherit; }
+[hidden] { display: none !important; }
+
+#cena { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; outline: none; }
+
+/* ── Tela de carregamento ───────────────────────────────────── */
+#carregamento {
+  position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: linear-gradient(180deg, #1c2748 0%, var(--navy) 100%); color: var(--papel); text-align: center; padding: 24px;
+  transition: opacity .4s ease;
+}
+#carregamento.saindo { opacity: 0; pointer-events: none; }
+#carregamento h1 { font-family: var(--fonte-titulo); font-weight: 700; font-size: clamp(28px, 6vw, 44px); margin: 0 0 6px; }
+#carregamento p { margin: 0 0 22px; opacity: .85; font-size: 15px; }
+.barra { width: min(360px, 80vw); height: 12px; background: rgba(255,255,255,.15); border-radius: 99px; overflow: hidden; }
+.barra > div { height: 100%; width: 0; background: linear-gradient(90deg, var(--dourado), #f2c56c); border-radius: 99px; transition: width .35s ease; }
+#carregamentoTexto { margin-top: 12px; font-size: 14px; opacity: .8; min-height: 1.4em; }
+#carregamento.erro .barra > div { background: #c97a5a; }
+#carregamento.erro #carregamentoTexto { opacity: 1; font-weight: 600; max-width: 460px; }
+.logo-ilha { font-size: 54px; margin-bottom: 10px; }
+
+/* ── HUD ───────────────────────────────────────────────────── */
+.hud { position: fixed; z-index: 10; pointer-events: none; }
+.hud > * { pointer-events: auto; }
+#hudTopo { top: 14px; left: 14px; right: 14px; display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.cartao {
+  background: var(--papel-90); color: var(--navy); border-radius: var(--raio); padding: 10px 14px;
+  box-shadow: 0 6px 20px rgba(0,0,0,.18); border: 2px solid rgba(22,31,56,.08);
+}
+#hudTitulo { font-family: var(--fonte-titulo); font-weight: 700; font-size: 18px; line-height: 1.15; }
+#hudTema { font-size: 12px; opacity: .75; margin-top: 2px; }
+#hudPalavras { font-weight: 600; font-size: 13px; color: var(--verde); margin-top: 4px; }
+.botao {
+  background: var(--navy); color: var(--papel); border: 0; border-radius: 12px; padding: 10px 14px; font-weight: 600; cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0,0,0,.2); transition: transform .08s ease, background .15s ease;
+}
+.botao:hover { background: #22305a; }
+.botao:active { transform: scale(.97); }
+.botao:focus-visible { outline: 3px solid var(--dourado); outline-offset: 2px; }
+.botao.secundario { background: var(--papel); color: var(--navy); border: 2px solid var(--navy); }
+.botao.dourado { background: var(--dourado); color: var(--navy); }
+
+#hudFps { position: fixed; left: 14px; bottom: 14px; z-index: 11; font-size: 12px; background: var(--navy-80); color: var(--papel); padding: 6px 10px; border-radius: 8px; font-variant-numeric: tabular-nums; }
+
+#dicaInteracao {
+  left: 50%; bottom: 22%; transform: translateX(-50%);
+  background: var(--papel-90); color: var(--navy); border-radius: 99px; padding: 10px 18px; font-weight: 600; font-size: 14px;
+  box-shadow: 0 6px 20px rgba(0,0,0,.2); display: flex; align-items: center; gap: 10px; animation: flutuar 1.6s ease-in-out infinite;
+}
+#dicaInteracao kbd { background: var(--navy); color: var(--papel); border-radius: 6px; padding: 2px 8px; font-family: inherit; font-weight: 700; }
+@keyframes flutuar { 0%,100% { transform: translate(-50%, 0); } 50% { transform: translate(-50%, -5px); } }
+
+#aviso {
+  left: 50%; top: 84px; transform: translateX(-50%); max-width: min(520px, 92vw);
+  background: var(--verde); color: var(--papel); padding: 12px 18px; border-radius: var(--raio); font-weight: 600; font-size: 15px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.25); text-align: center; opacity: 0;
+}
+#aviso.mostrar { animation: avisoEntra .35s ease forwards; }
+@keyframes avisoEntra { from { opacity: 0; transform: translate(-50%, -8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
+#hudAjuda { bottom: 14px; right: 14px; font-size: 12px; background: var(--navy-80); color: var(--papel); padding: 8px 12px; border-radius: 10px; line-height: 1.6; }
+#hudAjuda kbd { background: rgba(255,255,255,.15); border-radius: 4px; padding: 0 6px; font-family: inherit; }
+body.toque #hudAjuda { display: none; }
+
+/* ── Controles de toque ────────────────────────────────────── */
+#controlesToque { display: none; position: fixed; inset: 0; z-index: 12; pointer-events: none; }
+body.toque #controlesToque { display: block; }
+#joystick {
+  position: absolute; left: 26px; bottom: 26px; width: 130px; height: 130px; border-radius: 50%; pointer-events: auto; touch-action: none;
+  background: rgba(251,247,239,.18); border: 2px solid rgba(251,247,239,.5); backdrop-filter: blur(2px);
+}
+#joystick.ativo { background: rgba(251,247,239,.28); }
+#joystickPino { position: absolute; left: 50%; top: 50%; width: 56px; height: 56px; margin: -28px 0 0 -28px; border-radius: 50%; background: var(--papel); box-shadow: 0 4px 12px rgba(0,0,0,.3); }
+.btnToque {
+  position: absolute; width: 78px; height: 78px; border-radius: 50%; border: 0; pointer-events: auto; touch-action: none; user-select: none; -webkit-user-select: none;
+  color: var(--navy); font-weight: 700; font-size: 13px; box-shadow: 0 4px 14px rgba(0,0,0,.3); display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 2px;
+}
+.btnToque span { font-size: 22px; }
+.btnToque.ativo { transform: scale(.94); filter: brightness(.95); }
+#btnPular { right: 26px; bottom: 36px; background: var(--dourado); }
+#btnInteragir { right: 118px; bottom: 26px; background: var(--papel); }
+
+/* ── Menu (Esc) ────────────────────────────────────────────── */
+#menu { position: fixed; inset: 0; z-index: 40; background: rgba(22,31,56,.55); display: flex; align-items: center; justify-content: center; padding: 20px; }
+.painel { background: var(--papel); color: var(--navy); border-radius: 20px; padding: 24px; width: min(440px, 100%); box-shadow: 0 20px 60px rgba(0,0,0,.35); }
+.painel h2 { font-family: var(--fonte-titulo); font-size: 26px; margin: 0 0 14px; }
+.painel label { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(22,31,56,.1); font-weight: 500; }
+.painel select { padding: 8px 10px; border-radius: 10px; border: 2px solid rgba(22,31,56,.2); background: #fff; }
+.painel input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--verde); }
+.painel .acoes { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+.painel .acoes .botao { flex: 1; }
+
+@media (max-width: 600px) {
+  #hudTitulo { font-size: 15px; }
+  #hudTema { display: none; }
+  #dicaInteracao { bottom: 30%; font-size: 13px; }
+}
