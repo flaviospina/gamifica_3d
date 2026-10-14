@@ -6,7 +6,7 @@
 //  e a função decorar(ctx) que espalha objetos e registra colisores.
 // ============================================================
 import * as THREE from 'three';
-import { criarVegetacao, materialChapado, caixa } from './pecas.js';
+import { criarVegetacao, materialSuave, materialBrilho, caixa, caixaArredondada } from './pecas.js';
 
 export default {
   chave: 'ciencias',
@@ -85,9 +85,13 @@ export default {
       if (areaLivre(px, pz, 4)) break;
     }
     estacao.position.set(px, 0, pz);
-    estacao.rotation.y = Math.atan2(-px, -pz); // porta voltada para o centro
+    // Porta voltada para o centro, mas travada em múltiplos de 90° para o
+    // colisor (caixa alinhada aos eixos) coincidir com as paredes.
+    const quarto = Math.round(Math.atan2(-px, -pz) / (Math.PI / 2));
+    estacao.rotation.y = quarto * Math.PI / 2;
     scene.add(estacao);
-    colisao.solidoCentro(px, pz, 4.2, 3.4, 3.2);
+    const girada = Math.abs(quarto) % 2 === 1;
+    colisao.solidoCentro(px, pz, girada ? 3.2 : 4.0, girada ? 4.0 : 3.2, 3.2);
     colisao.malhasCamera.push(estacao);
 
     return { atualizar(dt, t) { estacao.userData.antena.rotation.y = t * 0.6; } };
@@ -96,27 +100,31 @@ export default {
   /** Cabana de pesquisa: paredes, telhado, antena parabólica e tanque de amostras. */
   criarEstacao() {
     const g = new THREE.Group();
-    const corpo = caixa(3.6, 2.2, 2.8, '#F4EFE4'); g.add(corpo);
-    const faixa = caixa(3.7, 0.3, 2.9, '#286456'); faixa.position.y = 2.1; g.add(faixa);
-    const telhado = new THREE.Mesh(new THREE.ConeGeometry(2.9, 1.2, 4), materialChapado('#2E4A6B'));
-    telhado.position.y = 2.85; telhado.rotation.y = Math.PI / 4; g.add(telhado);
-    const porta = caixa(0.8, 1.5, 0.1, '#8A5A2B'); porta.position.set(0, 0.75, 1.42); g.add(porta);
+    const corpo = caixa(3.6, 2.2, 2.8, '#F6F1E6', 0.18); g.add(corpo);
+    const faixa = caixa(3.72, 0.26, 2.92, '#286456', 0.1); faixa.position.y = 2.12; g.add(faixa);
+    // Telhado abobadado (cúpula de observatório)
+    const telhado = new THREE.Mesh(new THREE.SphereGeometry(1.9, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), materialSuave('#2E4A6B', { roughness: 0.5 }));
+    telhado.position.y = 2.2; telhado.scale.set(1, 0.75, 0.85); g.add(telhado);
+    const porta = caixa(0.8, 1.5, 0.12, '#8A5A2B', 0.08); porta.position.set(0, 0.75, 1.42); g.add(porta);
+    const macaneta = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), materialBrilho('#E0A537')); macaneta.position.set(0.28, 0.8, 1.5); g.add(macaneta);
     for (const sx of [-1.2, 1.2]) {
-      const janela = caixa(0.7, 0.6, 0.1, '#9ED3FF'); janela.position.set(sx, 1.3, 1.42); g.add(janela);
+      const janela = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.36, 0.1, 24), materialBrilho('#BFE3FF', { roughness: 0.1 }));
+      janela.rotation.x = Math.PI / 2; janela.position.set(sx, 1.3, 1.42); g.add(janela);
     }
     // Antena parabólica
-    const mastro = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.4, 6), materialChapado('#9A9C9F'));
-    mastro.position.set(1.2, 3.6, -0.6); g.add(mastro);
+    const mastro = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 1.3, 10), materialSuave('#B5B8BE', { roughness: 0.4, metalness: 0.3 }));
+    mastro.position.set(1.2, 3.4, -0.6); g.add(mastro);
     const antena = new THREE.Group();
-    const prato = new THREE.Mesh(new THREE.SphereGeometry(0.42, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2.6), materialChapado('#E9E9E9', { side: THREE.DoubleSide }));
+    const prato = new THREE.Mesh(new THREE.SphereGeometry(0.42, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2.6), materialSuave('#EDEDED', { side: THREE.DoubleSide, roughness: 0.35 }));
     prato.rotation.x = -Math.PI / 2.4; prato.position.y = 0.2;
     antena.add(prato);
-    antena.position.set(1.2, 4.2, -0.6);
+    antena.position.set(1.2, 4.0, -0.6);
     g.add(antena);
     g.userData.antena = antena;
     // Tanque de amostras ao lado
-    const tanque = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 1.1, 10), materialChapado('#3DA3D8', { transparent: true, opacity: 0.85 }));
+    const tanque = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 1.1, 24), materialBrilho('#3DA3D8', { transparent: true, opacity: 0.8 }));
     tanque.position.set(-2.4, 0.55, 0.6); g.add(tanque);
+    const tampa = new THREE.Mesh(new THREE.CylinderGeometry(0.54, 0.54, 0.1, 24), materialSuave('#286456')); tampa.position.set(-2.4, 1.12, 0.6); g.add(tampa);
     g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
     return g;
   },

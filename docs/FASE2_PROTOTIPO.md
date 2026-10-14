@@ -36,6 +36,16 @@ e abra `https://SEU-DOMINIO/gamifica/atividades/cruzadinha3d/index.php`.
 - `?debug=1` na URL mostra FPS e draw calls. `?qualidade=baixa|media|alta` força o nível.
 - Menu: qualidade gráfica, reduzir movimento, mostrar controles de toque, voltar ao início.
 
+## Revisão 0.2.2 (após o primeiro teste em produção)
+
+- Visual em estilo animação 3D: formas arredondadas (`RoundedBoxGeometry`), sombreamento suave,
+  materiais `MeshStandardMaterial` com mapa de ambiente gerado do próprio céu, tone mapping ACES,
+  sombras com borda suave, água com reflexo. Personagem com cabeça grande, olhos com brilho,
+  bochechas, sobrancelhas, piscar e sapatos arredondados.
+- Colisão: as árvores agora bloqueiam pela copa (não só pelo tronco); a estação de pesquisa gira em
+  múltiplos de 90° para o colisor coincidir com as paredes.
+- O `.htaccess` da pasta libera scripts inline (importmap) e o carregador virou `js/boot.js`.
+
 ## Medidas no teste automatizado (Chromium sem GPU, 1280×720)
 
 | Qualidade | Draw calls | Triângulos |

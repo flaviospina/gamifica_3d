@@ -52,6 +52,8 @@ class Jogo {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: this.qualidade.antialias, powerPreference: 'high-performance' });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.qualidade.pixelRatioMax));
     this.renderer.setSize(window.innerWidth, window.innerHeight, false);
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.05;
     if (this.qualidade.sombras > 0) {
       this.renderer.shadowMap.enabled = true;
       this.renderer.shadowMap.type = THREE.PCFShadowMap;
@@ -62,7 +64,7 @@ class Jogo {
     this.layout = montarLayout(this.dados.cruzadinha);
     await this._respirar();
     carregamento.progresso(60, 'Construindo a cruzadinha…');
-    this.mundo = new Mundo(this.scene, tema, this.qualidade, this.layout, this.dados.cruzadinha.titulo || 'ilha');
+    this.mundo = new Mundo(this.scene, tema, this.qualidade, this.layout, this.dados.cruzadinha.titulo || 'ilha', this.renderer);
     await this._respirar();
 
     carregamento.progresso(78, 'Chamando o explorador…');

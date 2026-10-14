@@ -7,7 +7,7 @@
 //  (este arquivo passa a carregar a cruzadinha da atividade e injetar
 //  os dados no bloco #dadosJogo).
 // ============================================================
-$versao = '0.2.1';               // mude para invalidar o cache dos arquivos js/css
+$versao = '0.2.2';               // mude para invalidar o cache dos arquivos js/css
 $three  = '0.186.1';             // mesma versão de js/config.js
 $dados  = [
   'modo'    => 'demo',

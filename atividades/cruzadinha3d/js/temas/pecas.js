@@ -1,8 +1,11 @@
 // ============================================================
-//  js/temas/pecas.js — Peças de cenário em low-poly (primitivas)
-//  Reutilizadas por todos os temas. Tudo instanciado para poucos draw calls.
+//  js/temas/pecas.js — Peças de cenário em estilo "animação 3D":
+//  formas arredondadas, sombreamento suave e materiais com brilho
+//  controlado. Tudo instanciado para poucos draw calls.
 // ============================================================
 import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 /** Agrupa transformações e gera um único InstancedMesh por tipo de peça. */
 export class Instanciador {
@@ -42,77 +45,98 @@ export class Instanciador {
   }
 }
 
-/** Material padrão low-poly (Lambert com faces chapadas: barato e bonito). */
-export function materialChapado(cor, extra = {}) {
-  return new THREE.MeshLambertMaterial({ color: cor, flatShading: true, ...extra });
+/** Material padrão: fosco e suave, reage ao mapa de ambiente (visual de animação). */
+export function materialSuave(cor, extra = {}) {
+  return new THREE.MeshStandardMaterial({ color: cor, roughness: 0.78, metalness: 0, ...extra });
+}
+/** Compatibilidade com o nome antigo. */
+export const materialChapado = materialSuave;
+
+/** Material brilhante (água, vidro, metal leve). */
+export function materialBrilho(cor, extra = {}) {
+  return new THREE.MeshStandardMaterial({ color: cor, roughness: 0.25, metalness: 0.05, ...extra });
+}
+
+/** Caixa de cantos arredondados (substitui o BoxGeometry "quadrado"). */
+export function caixaArredondada(l, a, p, raio = 0.08, segmentos = 3) {
+  return new RoundedBoxGeometry(l, a, p, segmentos, Math.min(raio, l / 2, a / 2, p / 2));
+}
+
+/** Une várias esferas num só "fofo" (copa de árvore, arbusto, nuvem). */
+function aglomerado(esferas, raioSeg = 10) {
+  const partes = esferas.map(([x, y, z, r]) => {
+    const g = new THREE.SphereGeometry(r, raioSeg, Math.round(raioSeg * 0.7));
+    g.translate(x, y, z);
+    return g;
+  });
+  const g = mergeGeometries(partes, false);
+  partes.forEach(p => p.dispose());
+  return g;
 }
 
 // ── Geometrias compartilhadas (criadas uma vez) ────────────────
 const geo = {};
 export function geometrias() {
   if (geo.pronto) return geo;
-  geo.tronco   = new THREE.CylinderGeometry(0.12, 0.18, 1.0, 6);
-  geo.copa     = new THREE.ConeGeometry(0.9, 1.6, 7);
-  geo.copaBaixa= new THREE.ConeGeometry(1.15, 1.3, 7);
-  geo.copaRedonda = new THREE.IcosahedronGeometry(0.85, 0);
-  geo.arbusto  = new THREE.IcosahedronGeometry(0.45, 0);
-  geo.pedra    = new THREE.DodecahedronGeometry(0.5, 0);
-  geo.flor     = new THREE.SphereGeometry(0.11, 5, 4);
-  geo.caule    = new THREE.CylinderGeometry(0.02, 0.02, 0.3, 4);
-  geo.manchaGrama = new THREE.CircleGeometry(1, 7);
-  geo.nuvem    = new THREE.SphereGeometry(1, 7, 5);
-  geo.pronto = true;
-  // Centraliza troncos/copas pela base (pivô no chão)
+  geo.tronco = new THREE.CylinderGeometry(0.11, 0.2, 1.0, 9);
   geo.tronco.translate(0, 0.5, 0);
-  geo.copa.translate(0, 0.8, 0);
-  geo.copaBaixa.translate(0, 0.65, 0);
-  geo.copaRedonda.translate(0, 0.85, 0);
-  geo.arbusto.translate(0, 0.35, 0);
-  geo.pedra.translate(0, 0.3, 0);
-  geo.caule.translate(0, 0.15, 0);
-  geo.flor.translate(0, 0.32, 0);
+  // Copa redonda: cacho de esferas
+  geo.copaRedonda = aglomerado([
+    [0, 1.05, 0, 0.78], [0.45, 0.85, 0.2, 0.52], [-0.42, 0.9, -0.15, 0.5],
+    [0.1, 0.8, -0.48, 0.48], [-0.1, 0.85, 0.48, 0.46], [0.05, 1.45, 0.05, 0.5],
+  ]);
+  // "Pinheiro" fofinho: três camadas de esferas achatadas
+  geo.copaPinheiro = aglomerado([
+    [0, 0.55, 0, 0.95], [0, 1.2, 0, 0.72], [0, 1.75, 0, 0.5], [0, 2.15, 0, 0.3],
+  ]);
+  geo.arbusto = aglomerado([[0, 0.32, 0, 0.42], [0.3, 0.26, 0.1, 0.3], [-0.28, 0.24, -0.1, 0.3], [0.05, 0.3, -0.3, 0.26]]);
+  geo.pedra = new THREE.IcosahedronGeometry(0.5, 1);
+  geo.pedra.translate(0, 0.28, 0);
+  geo.flor = aglomerado([[0, 0.34, 0, 0.09], [0.09, 0.34, 0, 0.07], [-0.09, 0.34, 0, 0.07], [0, 0.34, 0.09, 0.07], [0, 0.34, -0.09, 0.07]], 6);
+  geo.caule = new THREE.CylinderGeometry(0.018, 0.022, 0.32, 6);
+  geo.caule.translate(0, 0.16, 0);
+  geo.manchaGrama = new THREE.CircleGeometry(1, 16);
+  geo.manchaGrama.rotateX(-Math.PI / 2);
+  geo.nuvem = aglomerado([[0, 0, 0, 1], [0.9, -0.1, 0.1, 0.75], [-0.9, -0.15, 0, 0.7], [0.3, 0.35, -0.2, 0.65], [-0.3, 0.3, 0.25, 0.6]], 9);
+  geo.pronto = true;
   return geo;
 }
 
 /**
- * Cria um conjunto de instanciadores para vegetação com as cores do tema.
+ * Instanciadores de vegetação com as cores do tema.
  * Retorna um objeto com métodos de alto nível (arvore, arbusto, pedra, flor).
+ * Cada método devolve { raio, altura } para o colisor.
  */
 export function criarVegetacao(cores) {
   const g = geometrias();
   const inst = {
-    tronco:      new Instanciador(g.tronco, materialChapado(cores.tronco)),
-    copa:        new Instanciador(g.copa, materialChapado(cores.copa)),
-    copaBaixa:   new Instanciador(g.copaBaixa, materialChapado(cores.copaEscura)),
-    copaRedonda: new Instanciador(g.copaRedonda, materialChapado(cores.copa)),
-    arbusto:     new Instanciador(g.arbusto, materialChapado(cores.arbusto)),
-    pedra:       new Instanciador(g.pedra, materialChapado(cores.pedra)),
-    flor:        new Instanciador(g.flor, materialChapado('#ffffff'), { sombra: false }),
-    caule:       new Instanciador(g.caule, materialChapado(cores.copaEscura), { sombra: false }),
-    mancha:      new Instanciador(g.manchaGrama, materialChapado(cores.gramaEscura), { sombra: false, recebeSombra: true }),
+    tronco:       new Instanciador(g.tronco, materialSuave(cores.tronco, { roughness: 0.9 })),
+    copaRedonda:  new Instanciador(g.copaRedonda, materialSuave(cores.copa)),
+    copaPinheiro: new Instanciador(g.copaPinheiro, materialSuave(cores.copaEscura)),
+    arbusto:      new Instanciador(g.arbusto, materialSuave(cores.arbusto)),
+    pedra:        new Instanciador(g.pedra, materialSuave(cores.pedra, { roughness: 0.6 })),
+    flor:         new Instanciador(g.flor, materialSuave('#ffffff', { roughness: 0.5 }), { sombra: false }),
+    caule:        new Instanciador(g.caule, materialSuave(cores.copaEscura), { sombra: false }),
+    mancha:       new Instanciador(g.manchaGrama, materialSuave(cores.gramaEscura), { sombra: false, recebeSombra: true }),
   };
-  inst.mancha.geometria.rotateX(-Math.PI / 2);
 
   return {
     inst,
-    /** Pinheiro (2 copas) ou árvore redonda. */
     arvore(x, z, rnd, tipo = 'pinheiro') {
-      const esc = rnd.entre(0.8, 1.3);
+      const esc = rnd.entre(0.85, 1.35);
       const rot = rnd() * Math.PI * 2;
-      const p = new THREE.Vector3(x, 0, z);
-      inst.tronco.adicionar(p, { rotacaoY: rot, escala: [esc, esc * 1.1, esc] });
+      inst.tronco.adicionar(new THREE.Vector3(x, 0, z), { rotacaoY: rot, escala: [esc, esc * 1.15, esc] });
       if (tipo === 'pinheiro') {
-        inst.copaBaixa.adicionar(new THREE.Vector3(x, 0.55 * esc, z), { rotacaoY: rot, escala: esc });
-        inst.copa.adicionar(new THREE.Vector3(x, 1.25 * esc, z), { rotacaoY: rot + 0.4, escala: esc });
-      } else {
-        inst.copaRedonda.adicionar(new THREE.Vector3(x, 0.75 * esc, z), { rotacaoY: rot, escala: esc * 1.05 });
+        inst.copaPinheiro.adicionar(new THREE.Vector3(x, 0.45 * esc, z), { rotacaoY: rot, escala: esc });
+        return { raio: 0.85 * esc, altura: 3 * esc };
       }
-      return { raio: 0.3 * esc, altura: 2.6 * esc };
+      inst.copaRedonda.adicionar(new THREE.Vector3(x, 0.35 * esc, z), { rotacaoY: rot, escala: esc });
+      return { raio: 0.95 * esc, altura: 2.6 * esc };
     },
     arbusto(x, z, rnd) {
       const esc = rnd.entre(0.7, 1.4);
-      inst.arbusto.adicionar(new THREE.Vector3(x, 0, z), { rotacaoY: rnd() * 6.28, escala: [esc, esc * 0.8, esc] });
-      return { raio: 0.45 * esc, altura: 0.8 * esc };
+      inst.arbusto.adicionar(new THREE.Vector3(x, 0, z), { rotacaoY: rnd() * 6.28, escala: [esc, esc * 0.9, esc] });
+      return { raio: 0.62 * esc, altura: 0.8 * esc };
     },
     pedra(x, z, rnd) {
       const esc = rnd.entre(0.5, 1.6);
@@ -122,7 +146,7 @@ export function criarVegetacao(cores) {
     flor(x, z, rnd, cor) {
       const p = new THREE.Vector3(x, 0, z);
       inst.caule.adicionar(p);
-      inst.flor.adicionar(p, { cor: new THREE.Color(cor), escala: rnd.entre(0.8, 1.2) });
+      inst.flor.adicionar(p, { cor: new THREE.Color(cor), escala: rnd.entre(0.8, 1.2), rotacaoY: rnd() * 6.28 });
     },
     mancha(x, z, rnd) {
       inst.mancha.adicionar(new THREE.Vector3(x, 0.006, z), { rotacaoY: rnd() * 6.28, escala: rnd.entre(0.6, 1.5) });
@@ -135,25 +159,19 @@ export function criarVegetacao(cores) {
   };
 }
 
-/** Nuvens: grupos de esferas chapadas que flutuam devagar. */
+/** Nuvens fofas que flutuam devagar. */
 export function criarNuvens(scene, rnd, quantidade, raio) {
   const g = geometrias();
-  const mat = new THREE.MeshLambertMaterial({ color: '#ffffff', transparent: true, opacity: 0.92 });
+  const mat = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 1, transparent: true, opacity: 0.95 });
   const grupo = new THREE.Group();
   for (let i = 0; i < quantidade; i++) {
-    const nuvem = new THREE.Group();
-    const partes = rnd.inteiro(3, 5);
-    for (let k = 0; k < partes; k++) {
-      const m = new THREE.Mesh(g.nuvem, mat);
-      m.position.set(k * 0.9 - partes * 0.45, rnd.entre(-0.2, 0.2), rnd.entre(-0.4, 0.4));
-      const s = rnd.entre(0.7, 1.3);
-      m.scale.set(s, s * 0.55, s * 0.8);
-      nuvem.add(m);
-    }
+    const nuvem = new THREE.Mesh(g.nuvem, mat);
     const ang = rnd() * Math.PI * 2;
     const d = rnd.entre(raio * 0.6, raio * 1.3);
     nuvem.position.set(Math.cos(ang) * d, rnd.entre(9, 14), Math.sin(ang) * d);
-    nuvem.scale.setScalar(rnd.entre(1.4, 2.6));
+    const s = rnd.entre(1.3, 2.4);
+    nuvem.scale.set(s, s * 0.6, s * 0.8);
+    nuvem.rotation.y = rnd() * 6.28;
     nuvem.userData.vel = rnd.entre(0.15, 0.4);
     grupo.add(nuvem);
   }
@@ -169,9 +187,26 @@ export function criarNuvens(scene, rnd, quantidade, raio) {
   };
 }
 
-/** Caixa simples com material chapado (para construções). */
-export function caixa(largura, altura, profundidade, cor) {
-  const m = new THREE.Mesh(new THREE.BoxGeometry(largura, altura, profundidade), materialChapado(cor));
+/**
+ * Funde várias malhas estáticas que usam o MESMO material em uma só
+ * (menos draw calls). As transformações de cada malha são "assadas" na geometria.
+ */
+export function fundirMalhas(malhas, material) {
+  const geos = malhas.map(m => {
+    m.updateMatrix();
+    const g = m.geometry.clone().applyMatrix4(m.matrix);
+    for (const k of Object.keys(g.attributes)) if (!['position', 'normal', 'uv'].includes(k)) g.deleteAttribute(k);
+    if (!g.attributes.uv) g.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2));
+    return g;
+  });
+  const g = mergeGeometries(geos, false);
+  geos.forEach(x => x.dispose());
+  return new THREE.Mesh(g, material);
+}
+
+/** Caixa arredondada pronta (para construções). Pivô na base. */
+export function caixa(largura, altura, profundidade, cor, raio = 0.08) {
+  const m = new THREE.Mesh(caixaArredondada(largura, altura, profundidade, raio), materialSuave(cor));
   m.position.y = altura / 2;
   return m;
 }

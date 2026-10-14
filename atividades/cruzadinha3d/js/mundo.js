@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { CONFIG } from './config.js';
 import { Colisao } from './colisao.js';
 import { criarAleatorio, hashTexto } from './util.js';
-import { criarNuvens, materialChapado } from './temas/pecas.js';
+import { criarNuvens, materialSuave, materialBrilho, caixaArredondada } from './temas/pecas.js';
 import { criarTotem } from './totem.js';
 
 export class Mundo {
@@ -16,8 +16,9 @@ export class Mundo {
    * @param {object} qualidade parâmetros de js/config.js QUALIDADE[nivel]
    * @param {object} layout    { linhas, colunas, celulas: [{l, c}], totens: [{l, c, numero, direcao}] }
    */
-  constructor(scene, tema, qualidade, layout, seed = 'ilha') {
+  constructor(scene, tema, qualidade, layout, seed = 'ilha', renderer = null) {
     this.scene = scene;
+    this.renderer = renderer;
     this.tema = tema;
     this.qualidade = qualidade;
     this.colisao = new Colisao();
@@ -27,6 +28,7 @@ export class Mundo {
     this.tempo = 0;
 
     this._ceu();
+    this._ambiente();
     this._luzes();
     this._chao();
     this._agua();
@@ -73,9 +75,27 @@ export class Mundo {
     this.domo = domo;
   }
 
+  // ── Mapa de ambiente gerado do próprio céu (reflexos e luz suave) ──
+  _ambiente() {
+    if (!this.renderer) return;
+    const { tema, scene } = this;
+    const pmrem = new THREE.PMREMGenerator(this.renderer);
+    const cenaEnv = new THREE.Scene();
+    cenaEnv.add(this.domo.clone());
+    const chao = new THREE.Mesh(new THREE.SphereGeometry(100, 16, 8, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2),
+      new THREE.MeshBasicMaterial({ color: tema.cores.grama, side: THREE.BackSide }));
+    cenaEnv.add(chao);
+    const sol = new THREE.Mesh(new THREE.SphereGeometry(6, 12, 8), new THREE.MeshBasicMaterial({ color: '#fff7e0' }));
+    sol.position.set(...tema.luz.direcaoSol).multiplyScalar(3);
+    cenaEnv.add(sol);
+    scene.environment = pmrem.fromScene(cenaEnv, 0.06).texture;
+    scene.environmentIntensity = 0.55;
+    pmrem.dispose();
+  }
+
   _luzes() {
     const { tema, scene, qualidade } = this;
-    const hemi = new THREE.HemisphereLight(tema.luz.ceu, tema.luz.chao, tema.luz.intensidadeAmbiente);
+    const hemi = new THREE.HemisphereLight(tema.luz.ceu, tema.luz.chao, tema.luz.intensidadeAmbiente * 0.6);
     scene.add(hemi);
     const sol = new THREE.DirectionalLight(tema.luz.sol, tema.luz.intensidadeSol);
     sol.position.set(...tema.luz.direcaoSol);
@@ -86,8 +106,9 @@ export class Mundo {
       sol.shadow.mapSize.set(qualidade.sombras, qualidade.sombras);
       const r = CONFIG.mundo.raioAreia + 2;
       Object.assign(sol.shadow.camera, { left: -r, right: r, top: r, bottom: -r, near: 1, far: 80 });
-      sol.shadow.bias = -0.0015;
-      sol.shadow.normalBias = 0.02;
+      sol.shadow.bias = -0.0008;
+      sol.shadow.normalBias = 0.03;
+      sol.shadow.radius = 3;
     }
     this.sol = sol;
   }
@@ -95,13 +116,13 @@ export class Mundo {
   // ── Chão: disco de grama + anel de areia ──────────────────────
   _chao() {
     const { tema, scene, qualidade } = this;
-    const grama = new THREE.Mesh(new THREE.CircleGeometry(CONFIG.mundo.raioIlha, 56), materialChapado(tema.cores.grama));
+    const grama = new THREE.Mesh(new THREE.CircleGeometry(CONFIG.mundo.raioIlha, 72), materialSuave(tema.cores.grama, { roughness: 0.95 }));
     grama.rotation.x = -Math.PI / 2;
     grama.receiveShadow = qualidade.sombras > 0;
     scene.add(grama);
     const areia = new THREE.Mesh(
-      new THREE.RingGeometry(CONFIG.mundo.raioIlha - 0.3, CONFIG.mundo.raioAreia, 56),
-      materialChapado(tema.cores.areia)
+      new THREE.RingGeometry(CONFIG.mundo.raioIlha - 0.3, CONFIG.mundo.raioAreia, 72),
+      materialSuave(tema.cores.areia, { roughness: 0.95 })
     );
     areia.rotation.x = -Math.PI / 2;
     areia.position.y = -0.01;
@@ -109,8 +130,8 @@ export class Mundo {
     scene.add(areia);
     // "Barranco" da ilha até a água (lateral visível de perto)
     const lateral = new THREE.Mesh(
-      new THREE.CylinderGeometry(CONFIG.mundo.raioAreia, CONFIG.mundo.raioAreia + 0.8, 1.2, 56, 1, true),
-      materialChapado(tema.cores.areia, { side: THREE.DoubleSide })
+      new THREE.CylinderGeometry(CONFIG.mundo.raioAreia, CONFIG.mundo.raioAreia + 0.8, 1.2, 72, 1, true),
+      materialSuave(tema.cores.areia, { side: THREE.DoubleSide, roughness: 0.95 })
     );
     lateral.position.y = -0.6;
     scene.add(lateral);
@@ -119,7 +140,7 @@ export class Mundo {
   _agua() {
     const { tema, scene } = this;
     const geo = new THREE.PlaneGeometry(320, 320, 1, 1);
-    const mat = new THREE.MeshLambertMaterial({ color: tema.cores.agua, transparent: true, opacity: 0.88 });
+    const mat = materialBrilho(tema.cores.agua, { transparent: true, opacity: 0.9, roughness: 0.12 });
     const agua = new THREE.Mesh(geo, mat);
     agua.rotation.x = -Math.PI / 2;
     agua.position.y = CONFIG.mundo.nivelAgua;
@@ -148,9 +169,9 @@ export class Mundo {
     const origemX = -(layout.colunas - 1) / 2 * T;
     const origemZ = -(layout.linhas - 1) / 2 * T;
 
-    const geo = new THREE.BoxGeometry(T - folga, H, T - folga);
+    const geo = caixaArredondada(T - folga, H, T - folga, 0.07, 2);
     geo.translate(0, H / 2, 0);
-    const mat = new THREE.MeshLambertMaterial({ color: '#ffffff' });
+    const mat = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.55 });
     const malha = new THREE.InstancedMesh(geo, mat, celulas.length);
     malha.castShadow = qualidade.sombras > 0;
     malha.receiveShadow = qualidade.sombras > 0;

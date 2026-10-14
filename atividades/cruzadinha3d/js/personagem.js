@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import { CONFIG } from './config.js';
 import { clamp, lerp, lerpAngulo, suavizar } from './util.js';
-import { materialChapado } from './temas/pecas.js';
+import { materialSuave, caixaArredondada, fundirMalhas } from './temas/pecas.js';
 
 /** Opções de personalização (fase 4 mostra a tela; aqui já funciona). */
 export const OPCOES_AVATAR = {
@@ -42,15 +42,20 @@ export class Personagem {
   on(nome, fn) { (this.eventos[nome] ||= []).push(fn); }
   _emitir(nome, dados) { for (const fn of this.eventos[nome] || []) fn(dados); }
 
-  // ── Modelo ─────────────────────────────────────────────────
+  // ── Modelo: proporções de animação (cabeça grande, olhos expressivos,
+  //    formas arredondadas e sombreamento suave) ───────────────────────
   _montar() {
     const v = this.visual;
     this.mat = {
-      roupa: materialChapado(v.roupa),
-      pele: materialChapado(v.pele),
-      cabelo: materialChapado(v.cabelo),
-      escuro: materialChapado('#2A2A2A'),
-      calca: materialChapado('#2E3A5C'),
+      roupa:  materialSuave(v.roupa, { roughness: 0.7 }),
+      pele:   materialSuave(v.pele, { roughness: 0.55 }),
+      cabelo: materialSuave(v.cabelo, { roughness: 0.6 }),
+      escuro: materialSuave('#2A2A2A', { roughness: 0.5 }),
+      calca:  materialSuave('#2E3A5C', { roughness: 0.8 }),
+      branco: materialSuave('#FFFFFF', { roughness: 0.25 }),
+      iris:   materialSuave('#3B2A1A', { roughness: 0.2 }),
+      brilho: new THREE.MeshBasicMaterial({ color: '#FFFFFF' }),
+      bochecha: new THREE.MeshStandardMaterial({ color: '#FF8FA3', roughness: 0.9, transparent: true, opacity: 0.45 }),
     };
     const M = this.mat;
 
@@ -58,49 +63,85 @@ export class Personagem {
     this.corpo = new THREE.Group();          // recebe squash & stretch
     this.raiz.add(this.corpo);
 
-    // Tronco
-    const tronco = new THREE.Mesh(new THREE.CapsuleGeometry(0.27, 0.32, 3, 8), M.roupa);
-    tronco.position.y = 0.78;
-    // Cabeça
-    const cabeca = new THREE.Mesh(new THREE.SphereGeometry(0.27, 10, 8), M.pele);
-    cabeca.position.y = 1.3;
-    // Cabelo: calota
-    const cabelo = new THREE.Mesh(new THREE.SphereGeometry(0.285, 10, 6, 0, Math.PI * 2, 0, Math.PI * 0.52), M.cabelo);
-    cabelo.position.y = 1.33;
-    // Olhos
-    const geoOlho = new THREE.SphereGeometry(0.045, 6, 5);
-    const olhoE = new THREE.Mesh(geoOlho, M.escuro); olhoE.position.set(-0.1, 1.33, 0.23);
-    const olhoD = new THREE.Mesh(geoOlho, M.escuro); olhoD.position.set(0.1, 1.33, 0.23);
-    // Sorriso (torus fino)
-    const sorriso = new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.016, 5, 10, Math.PI), M.escuro);
-    sorriso.position.set(0, 1.22, 0.24); sorriso.rotation.z = Math.PI;
+    // Tronco (cápsula levemente em forma de pera)
+    const tronco = new THREE.Mesh(new THREE.CapsuleGeometry(0.26, 0.3, 8, 20), M.roupa);
+    tronco.position.y = 0.78; tronco.scale.set(1.05, 1, 0.92);
+    // Golinha
+    const gola = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.05, 10, 20), M.branco);
+    gola.position.y = 1.05; gola.rotation.x = Math.PI / 2;
 
-    // Braços (pivô no ombro)
-    const geoBraco = new THREE.CapsuleGeometry(0.075, 0.3, 3, 6);
+    // Cabeça grande e redonda
+    const cabeca = new THREE.Mesh(new THREE.SphereGeometry(0.36, 24, 18), M.pele);
+    cabeca.position.y = 1.4; cabeca.scale.set(1, 1.04, 0.96);
+    // Orelhas
+    const geoOrelha = new THREE.SphereGeometry(0.07, 12, 10);
+    const orelhaE = new THREE.Mesh(geoOrelha, M.pele); orelhaE.position.set(-0.35, 1.4, 0);
+    const orelhaD = new THREE.Mesh(geoOrelha, M.pele); orelhaD.position.set(0.35, 1.4, 0);
+    // Cabelo: calota com volume + franja
+    const cabelo = new THREE.Mesh(new THREE.SphereGeometry(0.385, 24, 14, 0, Math.PI * 2, 0, Math.PI * 0.4), M.cabelo);
+    cabelo.position.y = 1.44;
+    const franja = new THREE.Mesh(new THREE.SphereGeometry(0.2, 16, 12), M.cabelo);
+    franja.position.set(0.1, 1.7, 0.2); franja.scale.set(1.1, 0.5, 0.8);
+    const franja2 = new THREE.Mesh(new THREE.SphereGeometry(0.17, 16, 12), M.cabelo);
+    franja2.position.set(-0.15, 1.69, 0.19); franja2.scale.set(1.0, 0.5, 0.8);
+    // Olhos: esclera + íris + brilho
+    const olhos = new THREE.Group();
+    const partes = { branco: [], iris: [], brilho: [], boch: [], sobr: [] };
+    for (const sx of [-1, 1]) {
+      const branco = new THREE.Mesh(new THREE.SphereGeometry(0.085, 18, 14), M.branco);
+      branco.position.set(sx * 0.13, 1.42, 0.3); branco.scale.set(1, 1.15, 0.6);
+      const iris = new THREE.Mesh(new THREE.SphereGeometry(0.048, 14, 12), M.iris);
+      iris.position.set(sx * 0.13, 1.42, 0.345); iris.scale.set(1, 1.1, 0.5);
+      const brilho = new THREE.Mesh(new THREE.SphereGeometry(0.016, 8, 6), M.brilho);
+      brilho.position.set(sx * 0.13 + 0.018, 1.445, 0.368);
+      // Sobrancelha
+      const sobr = new THREE.Mesh(new THREE.CapsuleGeometry(0.018, 0.09, 4, 8), M.cabelo);
+      sobr.position.set(sx * 0.13, 1.54, 0.31); sobr.rotation.z = Math.PI / 2 + sx * 0.18;
+      // Bochecha corada
+      const boch = new THREE.Mesh(new THREE.SphereGeometry(0.05, 10, 8), M.bochecha);
+      boch.position.set(sx * 0.2, 1.33, 0.28); boch.scale.set(1.2, 0.8, 0.4);
+      partes.branco.push(branco); partes.iris.push(iris); partes.brilho.push(brilho); partes.boch.push(boch); partes.sobr.push(sobr);
+    }
+    olhos.add(fundirMalhas(partes.branco, M.branco), fundirMalhas(partes.iris, M.iris), fundirMalhas(partes.brilho, M.brilho));
+    // Nariz e sorriso
+    const nariz = new THREE.Mesh(new THREE.SphereGeometry(0.035, 10, 8), M.pele);
+    nariz.position.set(0, 1.36, 0.36);
+    const sorriso = new THREE.Mesh(new THREE.TorusGeometry(0.055, 0.011, 6, 14, Math.PI), M.escuro);
+    sorriso.position.set(0, 1.29, 0.335); sorriso.rotation.z = Math.PI; sorriso.rotation.x = -0.3;
+
+    // Braços (pivô no ombro) com mãos
+    const geoBraco = new THREE.CapsuleGeometry(0.08, 0.28, 6, 14);
     geoBraco.translate(0, -0.2, 0);
-    this.bracoE = new THREE.Group(); this.bracoE.position.set(-0.34, 1.0, 0);
-    this.bracoD = new THREE.Group(); this.bracoD.position.set(0.34, 1.0, 0);
+    this.bracoE = new THREE.Group(); this.bracoE.position.set(-0.33, 1.0, 0);
+    this.bracoD = new THREE.Group(); this.bracoD.position.set(0.33, 1.0, 0);
     this.bracoE.add(new THREE.Mesh(geoBraco, M.roupa));
     this.bracoD.add(new THREE.Mesh(geoBraco, M.roupa));
-    const geoMao = new THREE.SphereGeometry(0.08, 6, 5);
-    const maoE = new THREE.Mesh(geoMao, M.pele); maoE.position.y = -0.42;
-    const maoD = new THREE.Mesh(geoMao, M.pele); maoD.position.y = -0.42;
+    const geoMao = new THREE.SphereGeometry(0.095, 14, 12);
+    const maoE = new THREE.Mesh(geoMao, M.pele); maoE.position.y = -0.43;
+    const maoD = new THREE.Mesh(geoMao, M.pele); maoD.position.y = -0.43;
     this.bracoE.add(maoE); this.bracoD.add(maoD);
 
-    // Pernas (pivô no quadril)
-    const geoPerna = new THREE.CapsuleGeometry(0.1, 0.28, 3, 6);
-    geoPerna.translate(0, -0.2, 0);
-    this.pernaE = new THREE.Group(); this.pernaE.position.set(-0.14, 0.52, 0);
-    this.pernaD = new THREE.Group(); this.pernaD.position.set(0.14, 0.52, 0);
+    // Pernas (pivô no quadril) com sapatos arredondados
+    const geoPerna = new THREE.CapsuleGeometry(0.105, 0.24, 6, 14);
+    geoPerna.translate(0, -0.18, 0);
+    this.pernaE = new THREE.Group(); this.pernaE.position.set(-0.14, 0.5, 0);
+    this.pernaD = new THREE.Group(); this.pernaD.position.set(0.14, 0.5, 0);
     this.pernaE.add(new THREE.Mesh(geoPerna, M.calca));
     this.pernaD.add(new THREE.Mesh(geoPerna, M.calca));
-    const geoPe = new THREE.BoxGeometry(0.18, 0.1, 0.26);
-    const peE = new THREE.Mesh(geoPe, M.escuro); peE.position.set(0, -0.47, 0.04);
-    const peD = new THREE.Mesh(geoPe, M.escuro); peD.position.set(0, -0.47, 0.04);
+    const geoPe = new THREE.SphereGeometry(0.12, 14, 10);
+    const peE = new THREE.Mesh(geoPe, M.escuro); peE.position.set(0, -0.42, 0.05); peE.scale.set(1, 0.65, 1.35);
+    const peD = new THREE.Mesh(geoPe, M.escuro); peD.position.set(0, -0.42, 0.05); peD.scale.set(1, 0.65, 1.35);
     this.pernaE.add(peE); this.pernaD.add(peD);
 
-    this.corpo.add(tronco, cabeca, cabelo, olhoE, olhoD, sorriso, this.bracoE, this.bracoD, this.pernaE, this.pernaD);
-    this.cabeca = cabeca;
+    // Partes estáticas fundidas por material (menos draw calls)
+    const cabecaFundida = fundirMalhas([cabeca, orelhaE, orelhaD, nariz], M.pele);
+    const cabeloFundido = fundirMalhas([cabelo, franja, franja2, ...partes.sobr], M.cabelo);
+    const bochechas = fundirMalhas(partes.boch, M.bochecha);
+    this.corpo.add(tronco, gola, cabecaFundida, cabeloFundido, olhos, bochechas, sorriso,
+      this.bracoE, this.bracoD, this.pernaE, this.pernaD);
+    this.cabeca = new THREE.Group(); // pivô lógico (as partes já estão na posição final)
+    this.olhos = olhos;
+    this._tPiscar = 2 + Math.random() * 3;
 
     // Acessório
     this.acessorio = new THREE.Group();
@@ -109,8 +150,8 @@ export class Personagem {
 
     // Sombra "blob" (funciona em qualquer qualidade e ajuda a ler o pulo)
     this.sombra = new THREE.Mesh(
-      new THREE.CircleGeometry(0.42, 14),
-      new THREE.MeshBasicMaterial({ color: '#000000', transparent: true, opacity: 0.22, depthWrite: false })
+      new THREE.CircleGeometry(0.42, 24),
+      new THREE.MeshBasicMaterial({ color: '#000000', transparent: true, opacity: 0.2, depthWrite: false })
     );
     this.sombra.rotation.x = -Math.PI / 2;
     this.scene.add(this.sombra);
@@ -122,24 +163,25 @@ export class Personagem {
     this.acessorio.clear();
     const M = this.mat;
     if (tipo === 'chapeu') {
-      const aba = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.05, 12), M.cabelo);
-      aba.position.y = 1.5;
-      const copa = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.26, 0.26, 10), M.cabelo);
-      copa.position.y = 1.64;
-      const fita = new THREE.Mesh(new THREE.CylinderGeometry(0.265, 0.27, 0.07, 10), M.roupa);
-      fita.position.y = 1.55;
+      const aba = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.52, 0.06, 28), M.cabelo);
+      aba.position.y = 1.64;
+      const copa = new THREE.Mesh(new THREE.SphereGeometry(0.3, 24, 16, 0, Math.PI * 2, 0, Math.PI / 2), M.cabelo);
+      copa.position.y = 1.66; copa.scale.set(1, 0.9, 1);
+      const fita = new THREE.Mesh(new THREE.CylinderGeometry(0.305, 0.31, 0.08, 28), M.roupa);
+      fita.position.y = 1.7;
       this.acessorio.add(aba, copa, fita);
     } else if (tipo === 'oculos') {
-      const geoAro = new THREE.TorusGeometry(0.075, 0.014, 5, 12);
-      const aroE = new THREE.Mesh(geoAro, M.escuro); aroE.position.set(-0.1, 1.33, 0.25);
-      const aroD = new THREE.Mesh(geoAro, M.escuro); aroD.position.set(0.1, 1.33, 0.25);
-      const ponte = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.014, 0.014), M.escuro); ponte.position.set(0, 1.33, 0.25);
+      const geoAro = new THREE.TorusGeometry(0.095, 0.014, 8, 24);
+      const aroE = new THREE.Mesh(geoAro, M.escuro); aroE.position.set(-0.13, 1.42, 0.34);
+      const aroD = new THREE.Mesh(geoAro, M.escuro); aroD.position.set(0.13, 1.42, 0.34);
+      const ponte = new THREE.Mesh(new THREE.CapsuleGeometry(0.012, 0.06, 4, 8), M.escuro);
+      ponte.position.set(0, 1.42, 0.34); ponte.rotation.z = Math.PI / 2;
       this.acessorio.add(aroE, aroD, ponte);
     } else if (tipo === 'mochila') {
-      const corpo = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.4, 0.18), M.roupa);
+      const corpo = new THREE.Mesh(caixaArredondada(0.36, 0.42, 0.2, 0.08), M.roupa);
       corpo.position.set(0, 0.85, -0.3);
-      const bolso = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.16, 0.08), M.calca);
-      bolso.position.set(0, 0.75, -0.42);
+      const bolso = new THREE.Mesh(caixaArredondada(0.24, 0.18, 0.1, 0.05), M.calca);
+      bolso.position.set(0, 0.74, -0.42);
       this.acessorio.add(corpo, bolso);
     }
     this.acessorio.traverse(o => { if (o.isMesh) o.castShadow = true; });
@@ -316,5 +358,10 @@ export class Personagem {
     this.corpo.position.y = bob;
     this.corpo.rotation.x = lerp(this.corpo.rotation.x, inclinar, suavizar(8, dt));
     this.cabeca.rotation.y = Math.sin(t * 0.8) * 0.12;
+    // Piscar de vez em quando
+    this._tPiscar -= dt;
+    const piscando = this._tPiscar < 0.12;
+    this.olhos.scale.y = piscando ? 0.12 : 1;
+    if (this._tPiscar < 0) this._tPiscar = 2.5 + Math.random() * 3.5;
   }
 }
