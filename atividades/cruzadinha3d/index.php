@@ -2,28 +2,98 @@
 // ============================================================
 //  atividades/cruzadinha3d/index.php — Ilha das Palavras (cruzadinha 3D)
 //
-//  FASE 2 (protótipo): abre direto no modo demonstração, sem login
-//  e sem banco. A integração com a sessão do aluno entra na fase 5
-//  (este arquivo passa a carregar a cruzadinha da atividade e injetar
-//  os dados no bloco #dadosJogo).
+//  MODOS
+//   · ?demo=1           → demonstração: sem login, sem banco, nada é gravado
+//   · ?id=N             → aluno logado: carrega a atividade N, o progresso
+//                         parcial e o visual do explorador; grava via api.php
+//   · ?id=N&teste=1     → professor dono da atividade testa o jogo sem gravar
 // ============================================================
-$versao = '0.4.0';               // mude para invalidar o cache dos arquivos js/css
+$versao = '0.5.0';               // mude para invalidar o cache dos arquivos js/css
 $three  = '0.186.1';             // mesma versão de js/config.js
+
+require_once __DIR__ . '/lib.php';
+
+$demo   = isset($_GET['demo']);
+$id     = (int)($_GET['id'] ?? 0);
+$teste  = isset($_GET['teste']);
+$dados  = ['modo' => 'demo', 'jogador' => ['nome' => 'Visitante']];
+$erro   = null;
+
+if (!$demo && $id > 0) {
+    // ── Modo integrado: precisa do Gamifica (sessão + banco) ──
+    cruz_bootstrap();
+    if ($teste) cruz_requer(['professor', 'admin', 'coordenador']);
+    else cruz_requer(['aluno']);
+
+    $pdo = db();
+    $uid = cruz_usuario_id();
+
+    if ($teste) {
+        $st = $pdo->prepare('SELECT a.* FROM atividades a WHERE a.id = ? AND (a.professor_id = ? OR ? IN ("admin","coordenador"))');
+        $st->execute([$id, $uid, cruz_perfil()]);
+    } else {
+        $st = $pdo->prepare(
+            'SELECT a.* FROM atividades a
+             JOIN aluno_turma at2 ON at2.turma_id = a.turma_id AND at2.usuario_id = ? AND at2.ativo = 1
+             WHERE a.id = ? AND a.publicada = 1'
+        );
+        $st->execute([$uid, $id]);
+    }
+    $atv = $st->fetch();
+    if (!$atv || $atv['tipo'] !== 'cruzadinha3d') {
+        $erro = 'Atividade não encontrada ou não disponível para você.';
+    } else {
+        $cf = $pdo->prepare('SELECT * FROM cruzadinha_config WHERE atividade_id = ?');
+        $cf->execute([$id]);
+        $cfg = $cf->fetch();
+        if (!$cfg) {
+            $erro = 'Esta cruzadinha ainda não foi configurada pelo professor.';
+        } else {
+            $encerrada = ($atv['data_fim'] && strtotime($atv['data_fim']) < time())
+                      || ($atv['data_inicio'] && strtotime($atv['data_inicio']) > time());
+            $dados = [
+                'modo'       => $teste ? 'teste' : 'aluno',
+                'jogador'    => ['nome' => cruz_primeiro_nome(cruz_nome())],
+                'cruzadinha' => cruz_montar_json($atv, $cfg),
+                'csrf'       => cruz_csrf_token(),
+                'api'        => 'api.php',
+                'voltar'     => cruz_base_url() . ($teste ? '/professor/atividade_form.php?id=' . $id : '/aluno/missao.php?id=' . $id),
+                'encerrada'  => $encerrada,
+                'progresso'  => null,
+                'avatar'     => null,
+            ];
+            if (!$teste) {
+                $pr = $pdo->prepare('SELECT dados, tempo_seg, modo FROM cruzadinha_progresso WHERE aluno_id = ? AND atividade_id = ?');
+                $pr->execute([$uid, $id]);
+                if ($p = $pr->fetch()) {
+                    $dados['progresso'] = ['estado' => json_decode($p['dados'], true), 'tempoSeg' => (int)$p['tempo_seg'], 'modo' => $p['modo']];
+                }
+                $av = $pdo->prepare('SELECT roupa, cabelo, pele, acessorio FROM cruzadinha_avatar WHERE aluno_id = ?');
+                $av->execute([$uid]);
+                if ($a = $av->fetch()) $dados['avatar'] = $a;
+                $mx = $pdo->prepare('SELECT xp_melhor FROM aluno_xp WHERE aluno_id = ? AND atividade_id = ?');
+                $mx->execute([$uid, $id]);
+                $dados['melhorXp'] = (int)($mx->fetchColumn() ?: 0);
+            }
+        }
+    }
+} elseif (!$demo) {
+    // Sem id e sem demo: manda para o painel do aluno (ou para o login)
+    cruz_bootstrap();
+    $destino = cruz_usuario_id() ? cruz_base_url() . '/' : cruz_base_url() . '/login.php';
+    header('Location: ' . $destino);
+    exit;
+}
 
 // URL absoluta desta pasta (necessária para as metatags de compartilhamento:
 // WhatsApp, Facebook, LinkedIn e X exigem endereços completos para as imagens).
-$https    = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
-$host     = $_SERVER['HTTP_HOST'] ?? 'localhost';
-$pasta    = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/')), '/');
-$urlBase  = ($https ? 'https' : 'http') . '://' . $host . $pasta;
-$urlPagina = $urlBase . '/index.php' . (isset($_GET['demo']) ? '?demo=1' : '');
+$https     = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
+$host      = $_SERVER['HTTP_HOST'] ?? 'localhost';
+$pasta     = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/')), '/');
+$urlBase   = ($https ? 'https' : 'http') . '://' . $host . $pasta;
+$urlPagina = $urlBase . '/index.php?demo=1';
 $descricao = 'A cruzadinha virou um mundo 3D: ande sobre o tabuleiro, encontre os totens e resolva as palavras. '
            . 'Sem punição, tentativas ilimitadas. Funciona no celular, no tablet e no Chromebook, direto no navegador.';
-$dados  = [
-  'modo'    => 'demo',
-  'jogador' => ['nome' => 'Visitante'],
-  // 'cruzadinha' => (fase 5: vem do banco). Sem ela, o jogo usa data/exemplo_ciencias.js
-];
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -33,6 +103,7 @@ $dados  = [
 <meta name="theme-color" content="#161F38">
 <title>Ilha das Palavras — Gamifica</title>
 <meta name="description" content="<?= htmlspecialchars($descricao) ?>">
+<?php if (!$demo): ?><meta name="robots" content="noindex"><?php endif; ?>
 
 <!-- Compartilhamento: Open Graph (WhatsApp, Facebook, LinkedIn, Telegram) -->
 <meta property="og:type" content="website">
@@ -81,10 +152,19 @@ $dados  = [
 </script>
 </head>
 <body>
+<?php if ($erro): ?>
+<div id="carregamento" class="erro" role="alert">
+  <div class="logo-ilha" aria-hidden="true">🏝️</div>
+  <h1>Ilha das Palavras</h1>
+  <p><?= htmlspecialchars($erro) ?></p>
+  <a class="botao dourado" href="<?= htmlspecialchars(cruz_base_url()) ?>/">Voltar ao Gamifica</a>
+</div>
+</body></html>
+<?php exit; endif; ?>
 <canvas id="cena" tabindex="0" aria-label="Mundo 3D da cruzadinha"></canvas>
 
 <!-- Dados da atividade (nunca dados pessoais além do primeiro nome) -->
-<script id="dadosJogo" type="application/json"><?= json_encode($dados, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?></script>
+<script id="dadosJogo" type="application/json"><?= json_encode($dados, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
 
 <!-- Carregamento -->
 <div id="carregamento" role="status" aria-live="polite">
@@ -166,10 +246,12 @@ $dados  = [
       <tr id="resBonusTempoLinha"><td>Bônus de tempo</td><td id="resBonusTempo">+0</td></tr>
       <tr class="total"><td>Pontuação</td><td id="resTotal">0</td></tr>
     </table>
+    <p id="resXp" class="res-xp" hidden></p>
     <p id="resDemo" class="res-demo" hidden>Modo demonstração: nada foi gravado.</p>
     <div class="acoes">
       <button id="btnJogarDeNovo" class="botao secundario" type="button">Jogar de novo</button>
       <button id="btnContinuarExplorando" class="botao" type="button">Continuar explorando</button>
+      <a id="btnVoltarGamifica" class="botao dourado" href="#" hidden>Voltar ao Gamifica</a>
     </div>
   </div>
 </div>
@@ -186,6 +268,7 @@ $dados  = [
         <button id="btnComoJogar" class="botao secundario largo" type="button">❓ Como jogar</button>
         <button id="btnVoltarInicio" class="botao secundario largo" type="button">🏝️ Voltar ao início da ilha</button>
         <button id="btnReiniciar" class="botao secundario largo" type="button">🔄 Recomeçar cruzadinha</button>
+        <a id="btnSair" class="botao secundario largo" href="#" hidden>🚪 Salvar e voltar ao Gamifica</a>
       </div>
       <div>
         <h3>Acessibilidade e som</h3>

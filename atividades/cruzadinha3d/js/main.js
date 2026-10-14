@@ -18,7 +18,7 @@ import { Particulas } from './particulas.js';
 import { PainelDica } from './painel.js';
 import { Progressao } from './progressao.js';
 import { Celebracao } from './celebracao.js';
-import { ArmazenamentoLocal } from './progresso.js';
+import { ArmazenamentoLocal, ArmazenamentoServidor } from './progresso.js';
 import { calcularPontuacao, formatarTempo } from './pontuacao.js';
 import { mensagem } from './mensagens.js';
 import { ehToque, prefs } from './util.js';
@@ -170,11 +170,24 @@ class Jogo {
     this.estado.on('palavraResolvida', () => { if (this.mapa.aberto) this.mapa.atualizar(); });
     this.estado.on('letraRevelada', () => { if (this.mapa.aberto) this.mapa.atualizar(); });
 
-    // Progresso parcial
-    this.armazenamento = new ArmazenamentoLocal((this.cruzadinha.titulo || 'demo').replace(/\W+/g, '_'));
+    // Progresso parcial: servidor (aluno) ou navegador (demo/teste)
+    if (this.dados.modo === 'aluno') {
+      this.armazenamento = new ArmazenamentoServidor({ api: this.dados.api, csrf: this.dados.csrf, atividadeId: this.cruzadinha.id, progressoInicial: this.dados.progresso });
+    } else {
+      this.armazenamento = new ArmazenamentoLocal((this.dados.modo === 'teste' ? 'teste_' : '') + (this.cruzadinha.id || this.cruzadinha.titulo || 'demo').toString().replace(/\W+/g, '_'));
+    }
+    this.resultadoEnviado = false;
     this._restaurarProgresso();
-    window.addEventListener('pagehide', () => this._salvarProgresso());
-    window.addEventListener('beforeunload', () => this._salvarProgresso());
+    const aoSair = () => {
+      const dados = { estado: this.estado.serializar(), tempoSeg: Math.round(this.tempoJogo), modo: this.modo };
+      this.armazenamento.salvarAgora(dados);
+      // Saiu no meio com progresso: envia resultado parcial (o servidor só grava se melhorar o melhor)
+      if (this.dados.modo === 'aluno' && !this.terminada && !this.resultadoEnviado && this.estado.resolvidas.size > 0) {
+        this.armazenamento.enviarResultado(this._resumo(), { parcial: true, beacon: true });
+      }
+    };
+    window.addEventListener('pagehide', aoSair);
+    if (this.dados.encerrada) setTimeout(() => this._aviso('Esta atividade está fora do prazo: você pode jogar, mas o resultado não será gravado.', 6000), 1500);
 
     this._hud(tema);
     window.addEventListener('resize', () => this._redimensionar());
@@ -319,9 +332,21 @@ class Jogo {
     $('resBonusTempoLinha').hidden = !this.desafio.ativo;
     $('resTotal').textContent = `${pts.total}`;
     $('resDemo').hidden = this.dados.modo !== 'demo';
+    const xp = $('resXp');
+    xp.hidden = true;
+    if (this.dados.modo === 'teste') { xp.hidden = false; xp.textContent = 'Modo de teste do professor: nada foi gravado.'; }
+    if (this.dados.voltar) { $('btnVoltarGamifica').href = this.dados.voltar; $('btnVoltarGamifica').hidden = false; }
     $('resultado').hidden = false;
     $('btnContinuarExplorando').focus();
-    this.armazenamento.enviarResultado(this._resumo());
+    this.resultadoEnviado = true;
+    this.armazenamento.enviarResultado(this._resumo()).then((r) => {
+      if (!r || this.dados.modo !== 'aluno') return;
+      xp.hidden = false;
+      if (r.encerrada) xp.textContent = 'Atividade fora do prazo: o resultado não foi gravado, mas você completou a ilha! 🏝️';
+      else if (!r.gravado) xp.textContent = 'Resultado registrado.';
+      else if (r.delta > 0) xp.textContent = `+${r.delta} XP novos creditados no Gamifica! 🚀`;
+      else xp.textContent = `Seu melhor resultado (${r.melhor} XP) continua valendo. Nada se perde! 😉`;
+    }).catch((e) => { xp.hidden = false; xp.textContent = 'Não foi possível enviar o resultado agora (' + e.message + '). Seu progresso está salvo; tente de novo pelo menu.'; });
   }
 
   _resumo() {
@@ -355,8 +380,8 @@ class Jogo {
     if (this.estado.concluida) { this.terminada = true; this.celebracao.iniciar(null); this.celebracao.atualizar(10); this.celebracao.encerrar(); }
   }
 
-  _reiniciar() {
-    this.armazenamento.limpar();
+  async _reiniciar() {
+    await this.armazenamento.limpar();
     location.reload();
   }
 
@@ -411,6 +436,7 @@ class Jogo {
     $('btnReiniciar').addEventListener('click', () => { if (confirm('Começar esta cruzadinha do zero? Seu melhor resultado já salvo não muda.')) this._reiniciar(); });
     $('btnContinuarExplorando').addEventListener('click', () => { $('resultado').hidden = true; this.celebracao.encerrar(); this.controles.ativo = true; });
     $('btnJogarDeNovo').addEventListener('click', () => this._reiniciar());
+    if (this.dados.voltar) { const b = $('btnSair'); b.hidden = false; b.href = this.dados.voltar; b.addEventListener('click', () => { this._salvarProgresso(); }); }
     if (new URLSearchParams(location.search).has('debug')) $('hudFps').hidden = false;
   }
 

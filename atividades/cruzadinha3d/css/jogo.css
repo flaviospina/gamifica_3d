@@ -179,6 +179,8 @@ body.texto-grande .dica-texto { font-size: 24px; }
 .res-pontos td:last-child { text-align: right; font-weight: 700; color: var(--verde); }
 .res-pontos tr.total td { border-bottom: 0; font-family: var(--fonte-titulo); font-size: 22px; color: var(--navy); }
 .res-demo { font-size: 12px; opacity: .7; margin: 4px 0; }
+.res-xp { font-weight: 700; color: var(--verde); margin: 6px 0; }
+.painel .acoes a.botao { text-decoration: none; text-align: center; display: inline-flex; align-items: center; justify-content: center; }
 @media (max-width: 480px) { .res-grade { grid-template-columns: repeat(2, 1fr); } }
 
 /* ── Texto grande ──────────────────────────────────────────── */
