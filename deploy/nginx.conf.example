@@ -1,0 +1,78 @@
+# deploy/nginx.conf.example
+# Bloco de servidor nginx para o cecape-server (HestiaCP + php-fpm 8.2).
+# No HestiaCP: Web → domínio → Avançado → "Diretivas nginx personalizadas",
+# ou salve como template em /usr/local/hestia/data/templates/web/nginx/php-fpm/
+# (veja LEIA-ME.md). Apenas HTTPS na porta 443, conforme as regras do DTI;
+# o proxy reverso por nome encaminha o tráfego para este bloco.
+
+server {
+    listen 443 ssl http2;
+    server_name materiais.cecapescs.com.br;
+
+    # Certificados gerenciados pelo HestiaCP (Let's Encrypt)
+    ssl_certificate     /home/cecape/conf/web/materiais.cecapescs.com.br/ssl/materiais.cecapescs.com.br.pem;
+    ssl_certificate_key /home/cecape/conf/web/materiais.cecapescs.com.br/ssl/materiais.cecapescs.com.br.key;
+
+    # Só a pasta public/ é publicada. app/, storage/, vendor/ e .env ficam fora.
+    root /home/cecape/web/materiais.cecapescs.com.br/public_html/public;
+    index index.php;
+    charset utf-8;
+    client_max_body_size 25m;
+
+    access_log /var/log/nginx/domains/materiais.cecapescs.com.br.log combined;
+    error_log  /var/log/nginx/domains/materiais.cecapescs.com.br.error.log error;
+
+    # Cabeçalhos de segurança
+    add_header X-Content-Type-Options nosniff always;
+    add_header X-Frame-Options SAMEORIGIN always;
+    add_header Referrer-Policy strict-origin-when-cross-origin always;
+
+    # Nega qualquer arquivo iniciado por ponto (.env, .git, .htaccess)
+    location ~ /\. {
+        deny all;
+        return 404;
+    }
+
+    # Nega extensões sensíveis mesmo que apareçam em public/ por engano
+    location ~* \.(env|sql|md|log|lock|json)$ {
+        deny all;
+        return 404;
+    }
+
+    # Arquivos gerados (imagens/PDF) são servidos como estáticos; nunca executam PHP
+    location ~* ^/storage/.*\.php$ {
+        deny all;
+        return 404;
+    }
+    location /storage/ {
+        expires 7d;
+        add_header Cache-Control "public";
+        try_files $uri =404;
+    }
+
+    location /assets/ {
+        expires 7d;
+        add_header Cache-Control "public";
+        try_files $uri =404;
+    }
+
+    # Roteador único
+    location / {
+        try_files $uri $uri/ /index.php?$args;
+    }
+
+    location ~ ^/index\.php(/|$) {
+        include /etc/nginx/fastcgi_params;
+        fastcgi_pass unix:/run/php/php8.2-fpm-materiais.cecapescs.com.br.sock;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_param PATH_INFO $fastcgi_path_info;
+        fastcgi_read_timeout 120s;
+        fastcgi_hide_header X-Powered-By;
+    }
+
+    # Nenhum outro .php é executado dentro de public/
+    location ~ \.php$ {
+        deny all;
+        return 404;
+    }
+}
