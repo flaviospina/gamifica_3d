@@ -1,0 +1,21 @@
+{
+    "name": "cecape/materiais-visuais",
+    "description": "Gerador de Materiais Visuais com IA para a Rede Municipal de Ensino de São Caetano do Sul (CECAPE)",
+    "type": "project",
+    "license": "proprietary",
+    "require": {
+        "php": ">=8.2",
+        "ext-pdo": "*",
+        "ext-pdo_mysql": "*",
+        "ext-mbstring": "*",
+        "ext-json": "*"
+    },
+    "autoload": {
+        "classmap": ["app/"]
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "sort-packages": true,
+        "platform-check": false
+    }
+}

@@ -1,0 +1,21 @@
+# Segredos e configuração local
+.env
+.env.test
+.env.*.local
+
+# Arquivos gerados (imagens, PDFs, logs, cache)
+storage/*
+!storage/.gitkeep
+!storage/public/
+storage/public/*
+!storage/public/.gitkeep
+!storage/logs/
+storage/logs/*
+!storage/logs/.gitkeep
+
+# Ferramentas e sistema
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.log
