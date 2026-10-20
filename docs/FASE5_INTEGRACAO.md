@@ -81,3 +81,11 @@ Versões completas em `integracao/`; edições manuais para V1 em `integracao/LE
 - **Polimento de animação**: olhos maiores com íris, pupila e dois brilhos; sobrancelhas arqueadas; cabelo com
   tufos e mechas laterais; sapatos arredondados; luz de contorno fria. Cenário com cogumelos, montinhos de grama,
   caminho de pedras até a grade e sol no céu.
+
+## 8. Estilo "animação de cinema" 0.5.2
+
+Aproximação do estilo das referências enviadas, dentro do que roda em tempo real:
+luz dourada de fim de tarde, bloom suave + vinheta + tom quente (qualidades Média e Alta),
+grama em tufos instanciados que balançam com o vento (8.000 na Alta, 1.500 na Baixa),
+texturas procedurais geradas em canvas (pedra com veios, pedra com musgo, grama, folhas, casca, areia),
+rochas no mar, ilhas ao longe na névoa, canteiros de flores, casaco com gola felpuda, jeans, botas e cachos.

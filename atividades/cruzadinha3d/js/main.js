@@ -4,6 +4,11 @@
 //  celebração), progresso parcial e pontuação.
 // ============================================================
 import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { CONFIG } from './config.js';
 import { carregamento } from './carregamento.js';
 import { detectarQualidade, parametrosQualidade, salvarQualidade } from './qualidade.js';
@@ -69,7 +74,8 @@ class Jogo {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.qualidade.pixelRatioMax));
     this.renderer.setSize(window.innerWidth, window.innerHeight, false);
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.05;
+    this.renderer.toneMappingExposure = 1.12;
+    this.renderer.info.autoReset = false; // contagem de draw calls somando todos os passes
     if (this.qualidade.sombras > 0) {
       this.renderer.shadowMap.enabled = true;
       this.renderer.shadowMap.type = THREE.PCFShadowMap;
@@ -199,6 +205,7 @@ class Jogo {
 
     carregamento.progresso(92, 'Ajustando a câmera…');
     await this._respirar();
+    this._posProcessamento();
     this.renderer.compile(this.scene, this.cameraJogo.camera);
     carregamento.concluir();
     this.renderer.setAnimationLoop(() => this._quadro());
@@ -233,9 +240,38 @@ class Jogo {
 
   _respirar() { return new Promise(r => setTimeout(r, 30)); }
 
+  /** Brilho suave (bloom), vinheta e tom quente — só nas qualidades Média e Alta. */
+  _posProcessamento() {
+    if (!this.qualidade.pos) return;
+    const w = window.innerWidth, h = window.innerHeight;
+    this.composer = new EffectComposer(this.renderer);
+    this.composer.addPass(new RenderPass(this.scene, this.cameraJogo.camera));
+    this.bloom = new UnrealBloomPass(new THREE.Vector2(w, h), 0.28, 0.6, 0.82);
+    this.composer.addPass(this.bloom);
+    this.grade = new ShaderPass({
+      uniforms: { tDiffuse: { value: null }, uForca: { value: 1 } },
+      vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+      fragmentShader: `uniform sampler2D tDiffuse; uniform float uForca; varying vec2 vUv;
+        void main(){
+          vec4 c = texture2D(tDiffuse, vUv);
+          // tom quente e leve saturação (estilo "fim de tarde")
+          vec3 quente = c.rgb * vec3(1.04, 1.0, 0.94);
+          float cinza = dot(quente, vec3(0.299, 0.587, 0.114));
+          vec3 sat = mix(vec3(cinza), quente, 1.06);
+          // vinheta suave nas bordas
+          float d = distance(vUv, vec2(0.5));
+          float vin = smoothstep(0.45, 0.95, d) * 0.28;
+          gl_FragColor = vec4(mix(c.rgb, sat * (1.0 - vin), uForca), c.a);
+        }`,
+    });
+    this.composer.addPass(this.grade);
+    this.composer.addPass(new OutputPass());
+  }
+
   _redimensionar() {
     this.renderer.setSize(window.innerWidth, window.innerHeight, false);
     this.cameraJogo.redimensionar(window.innerWidth, window.innerHeight);
+    this.composer?.setSize(window.innerWidth, window.innerHeight);
   }
 
   // ── Mecânica ────────────────────────────────────────────────
@@ -502,7 +538,8 @@ class Jogo {
     this.celebracao.atualizar(dt);
     if (!this.celebracao.ativa) this._atualizarTotens();
     this.cameraJogo.atualizar(dt, this.personagem.posicao, this.mundo.colisao.malhasCamera);
-    if (!this.mapa.aberto) this.renderer.render(this.scene, this.cameraJogo.camera); // mapa 2D: poupa GPU/bateria
+    this.renderer.info.reset();
+    if (!this.mapa.aberto) { if (this.composer) this.composer.render(); else this.renderer.render(this.scene, this.cameraJogo.camera); } // mapa 2D: poupa GPU/bateria
 
     const fps = this.fps;
     fps.quadros++; fps.tempo += dtReal;

@@ -51,7 +51,10 @@ export class Personagem {
       pele:   materialSuave(v.pele, { roughness: 0.55 }),
       cabelo: materialSuave(v.cabelo, { roughness: 0.6 }),
       escuro: materialSuave('#2A2A2A', { roughness: 0.5 }),
-      calca:  materialSuave('#2E3A5C', { roughness: 0.8 }),
+      calca:  materialSuave('#3E5FA3', { roughness: 0.9 }),
+      bota:   materialSuave('#7A4A2B', { roughness: 0.55 }),
+      sola:   materialSuave('#4A2E1C', { roughness: 0.8 }),
+      la:     materialSuave('#FFF6E8', { roughness: 1 }),
       branco: materialSuave('#FFFFFF', { roughness: 0.25 }),
       iris:   materialSuave('#5A3B22', { roughness: 0.15 }),
       pupila: materialSuave('#1A1410', { roughness: 0.1 }),
@@ -68,8 +71,15 @@ export class Personagem {
     const tronco = new THREE.Mesh(new THREE.CapsuleGeometry(0.26, 0.3, 8, 20), M.roupa);
     tronco.position.y = 0.78; tronco.scale.set(1.08, 1, 0.95);
     // Golinha
-    const gola = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.05, 10, 20), M.branco);
-    gola.position.y = 1.05; gola.rotation.x = Math.PI / 2;
+    // Gola felpuda: anel de bolinhas de lã
+    const golaPartes = [];
+    for (let k = 0; k < 10; k++) {
+      const a = (k / 10) * Math.PI * 2;
+      const b = new THREE.Mesh(new THREE.SphereGeometry(0.075, 8, 6), M.la);
+      b.position.set(Math.cos(a) * 0.23, 1.06 + Math.sin(a * 3) * 0.01, Math.sin(a) * 0.21);
+      golaPartes.push(b);
+    }
+    const gola = fundirMalhas(golaPartes, M.la);
 
     // Cabeça grande e redonda
     const cabeca = new THREE.Mesh(new THREE.SphereGeometry(0.36, 24, 18), M.pele);
@@ -91,6 +101,13 @@ export class Personagem {
     tufo2.position.set(-0.18, 1.74, -0.14); tufo2.scale.set(1, 0.8, 1);
     const ladoE = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 10), M.cabelo); ladoE.position.set(-0.33, 1.5, -0.05); ladoE.scale.set(0.5, 1.1, 0.9);
     const ladoD = ladoE.clone(); ladoD.position.x = 0.33;
+    const cachos = [];
+    for (let k = 0; k < 9; k++) {
+      const a = (k / 9) * Math.PI * 2;
+      const cacho = new THREE.Mesh(new THREE.SphereGeometry(0.1 + (k % 3) * 0.02, 10, 8), M.cabelo);
+      cacho.position.set(Math.cos(a) * 0.28, 1.66 + Math.sin(a * 2) * 0.05, Math.sin(a) * 0.26);
+      cachos.push(cacho);
+    }
     // Olhos: esclera + íris + brilho
     const olhos = new THREE.Group();
     const partes = { branco: [], iris: [], brilho: [], boch: [], sobr: [] };
@@ -140,14 +157,19 @@ export class Personagem {
     this.pernaD = new THREE.Group(); this.pernaD.position.set(0.14, 0.5, 0);
     this.pernaE.add(new THREE.Mesh(geoPerna, M.calca));
     this.pernaD.add(new THREE.Mesh(geoPerna, M.calca));
+    // Botas marrons com sola
     const geoPe = new THREE.SphereGeometry(0.13, 14, 10);
-    const peE = new THREE.Mesh(geoPe, M.escuro); peE.position.set(0, -0.42, 0.06); peE.scale.set(1.05, 0.7, 1.45);
-    const peD = new THREE.Mesh(geoPe, M.escuro); peD.position.set(0, -0.42, 0.06); peD.scale.set(1.05, 0.7, 1.45);
-    this.pernaE.add(peE); this.pernaD.add(peD);
+    const geoSola = new THREE.CylinderGeometry(0.14, 0.15, 0.05, 12);
+    for (const perna of [this.pernaE, this.pernaD]) {
+      const bota = new THREE.Mesh(geoPe, M.bota); bota.position.set(0, -0.4, 0.06); bota.scale.set(1.05, 0.75, 1.45);
+      const cano = new THREE.Mesh(new THREE.CylinderGeometry(0.115, 0.125, 0.12, 12), M.bota); cano.position.set(0, -0.35, 0);
+      const sola = new THREE.Mesh(geoSola, M.sola); sola.position.set(0, -0.48, 0.07); sola.scale.set(1, 1, 1.5);
+      perna.add(bota, cano, sola);
+    }
 
     // Partes estáticas fundidas por material (menos draw calls)
     const cabecaFundida = fundirMalhas([cabeca, orelhaE, orelhaD, nariz], M.pele);
-    const cabeloFundido = fundirMalhas([cabelo, franja, franja2, tufo, tufo2, ladoE, ladoD, ...partes.sobr], M.cabelo);
+    const cabeloFundido = fundirMalhas([cabelo, franja, franja2, tufo, tufo2, ladoE, ladoD, ...cachos, ...partes.sobr], M.cabelo);
     const bochechas = fundirMalhas(partes.boch, M.bochecha);
     this.corpo.add(tronco, gola, cabecaFundida, cabeloFundido, olhos, bochechas, sorriso,
       this.bracoE, this.bracoD, this.pernaE, this.pernaD);

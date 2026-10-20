@@ -8,7 +8,7 @@
 //                         parcial e o visual do explorador; grava via api.php
 //   · ?id=N&teste=1     → professor dono da atividade testa o jogo sem gravar
 // ============================================================
-$versao = '0.5.1';               // mude para invalidar o cache dos arquivos js/css
+$versao = '0.5.2';               // mude para invalidar o cache dos arquivos js/css
 $three  = '0.186.1';             // mesma versão de js/config.js
 
 require_once __DIR__ . '/lib.php';

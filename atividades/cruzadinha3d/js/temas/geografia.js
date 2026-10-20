@@ -28,7 +28,6 @@ export function decorarBasico(tema, ctx, { pinheiros = 0.5 } = {}) {
   const { scene, rnd, qualidade, colisao, areaLivre, raioIlha } = ctx;
   const veg = criarVegetacao(tema.cores);
   const d = qualidade.decoracao;
-  for (let i = 0; i < 40 * d; i++) { const a = rnd() * 6.283, r = rnd.entre(2, raioIlha - 1); veg.mancha(Math.cos(a) * r, Math.sin(a) * r, rnd); }
   let n = 0, t = 0;
   while (n < 36 * d && t++ < 800) {
     const a = rnd() * 6.283, r = rnd.entre(raioIlha - 4.5, raioIlha - 1.2);

@@ -8,6 +8,10 @@ import { Colisao } from './colisao.js';
 import { criarAleatorio, hashTexto } from './util.js';
 import { criarNuvens, materialSuave, materialBrilho, caixaArredondada } from './temas/pecas.js';
 import { criarTotem } from './totem.js';
+import { Texturas } from './texturas.js';
+
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+function mergeGeometriasSimples(lista) { return mergeGeometries(lista, false); }
 
 export class Mundo {
   /**
@@ -36,6 +40,8 @@ export class Mundo {
     this._totens(layout);
     this.pontoInicial = this._pontoInicial(layout);
     this._decorar();
+    this._tufos();
+    this._horizonte();
     if (qualidade.nuvens > 0) {
       const nuvens = criarNuvens(scene, this.rnd, qualidade.nuvens, CONFIG.mundo.raioAreia);
       this.atualizaveis.push(nuvens);
@@ -89,7 +95,7 @@ export class Mundo {
     sol.position.set(...tema.luz.direcaoSol).multiplyScalar(3);
     cenaEnv.add(sol);
     scene.environment = pmrem.fromScene(cenaEnv, 0.06).texture;
-    scene.environmentIntensity = 0.55;
+    scene.environmentIntensity = 0.7;
     pmrem.dispose();
   }
 
@@ -120,13 +126,13 @@ export class Mundo {
   // ── Chão: disco de grama + anel de areia ──────────────────────
   _chao() {
     const { tema, scene, qualidade } = this;
-    const grama = new THREE.Mesh(new THREE.CircleGeometry(CONFIG.mundo.raioIlha, 72), materialSuave(tema.cores.grama, { roughness: 0.95 }));
+    const grama = new THREE.Mesh(new THREE.CircleGeometry(CONFIG.mundo.raioIlha, 72), materialSuave('#FFFFFF', { roughness: 0.95, map: Texturas.grama(tema.cores.grama) }));
     grama.rotation.x = -Math.PI / 2;
     grama.receiveShadow = qualidade.sombras > 0;
     scene.add(grama);
     const areia = new THREE.Mesh(
       new THREE.RingGeometry(CONFIG.mundo.raioIlha - 0.3, CONFIG.mundo.raioAreia, 72),
-      materialSuave(tema.cores.areia, { roughness: 0.95 })
+      materialSuave('#FFFFFF', { roughness: 0.95, map: Texturas.areia(tema.cores.areia) })
     );
     areia.rotation.x = -Math.PI / 2;
     areia.position.y = -0.01;
@@ -216,7 +222,7 @@ export class Mundo {
     // Atributo por casa: 0 = normal, 1 = palavra resolvida (verde reluzente pulsando)
     const resolvido = new THREE.InstancedBufferAttribute(new Float32Array(celulas.length), 1);
     geo.setAttribute('resolvido', resolvido);
-    const mat = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.55 });
+    const mat = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.75, map: Texturas.pedra('#F2EADA', 15) });
     const uTempo = { value: 0 };
     mat.onBeforeCompile = (shader) => {
       shader.uniforms.uTempo = uTempo;
@@ -309,6 +315,93 @@ export class Mundo {
     if (resultado && resultado.atualizar) this.atualizaveis.push(resultado);
   }
 
+  // ── Grama em tufos (instanciada, balança com o vento) ────────
+  _tufos() {
+    const n = this.qualidade.grama || 0;
+    if (!n) return;
+    const { scene, rnd, tema } = this;
+    // Tufo = 3 planos cruzados com recorte alfa
+    const plano = new THREE.PlaneGeometry(0.55, 0.5, 1, 2);
+    plano.translate(0, 0.25, 0);
+    const partes = [plano, plano.clone().rotateY(Math.PI / 3), plano.clone().rotateY(-Math.PI / 3)];
+    const geo = mergeGeometriasSimples(partes);
+    const mat = new THREE.MeshStandardMaterial({ map: Texturas.tufo(), alphaTest: 0.45, side: THREE.DoubleSide, roughness: 0.9, color: '#FFFFFF' });
+    const uTempo = { value: 0 };
+    mat.onBeforeCompile = (shader) => {
+      shader.uniforms.uTempo = uTempo;
+      shader.vertexShader = 'uniform float uTempo;\n' + shader.vertexShader.replace('#include <begin_vertex>', `
+        #include <begin_vertex>
+        vec3 pm = (instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+        float balanco = sin(uTempo * 1.6 + pm.x * 0.8 + pm.z * 0.6) * 0.08 + sin(uTempo * 3.1 + pm.z) * 0.03;
+        transformed.x += balanco * uv.y * uv.y;`);
+    };
+    mat.customProgramCacheKey = () => 'tufosGrama';
+    this._uTempoTufos = uTempo;
+    const malha = new THREE.InstancedMesh(geo, mat, n);
+    const m = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Vector3(), c = new THREE.Color();
+    const base = new THREE.Color(tema.cores.grama), escuro = new THREE.Color(tema.cores.gramaEscura), claro = new THREE.Color('#D7F08A');
+    const lim = this.grade.limites, ini = this.pontoInicial;
+    let i = 0, tent = 0;
+    while (i < n && tent++ < n * 4) {
+      const a = rnd() * Math.PI * 2, d = Math.sqrt(rnd()) * (CONFIG.mundo.raioIlha - 0.6);
+      const x = Math.cos(a) * d, z = Math.sin(a) * d;
+      if (x > lim.minX - 0.3 && x < lim.maxX + 0.3 && z > lim.minZ - 0.3 && z < lim.maxZ + 0.3) continue;
+      if (Math.abs(x - ini.x) < 0.7 && z > lim.maxZ && z < ini.z + 1.5) continue; // caminho de pedras
+      q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), rnd() * Math.PI);
+      const esc = rnd.entre(0.7, 1.3);
+      e.set(esc, esc * rnd.entre(0.8, 1.2), esc);
+      m.compose(new THREE.Vector3(x, 0, z), q, e);
+      malha.setMatrixAt(i, m);
+      c.copy(escuro).lerp(base, rnd()).lerp(claro, rnd() * 0.3);
+      malha.setColorAt(i, c);
+      i++;
+    }
+    malha.count = i;
+    malha.instanceMatrix.needsUpdate = true;
+    malha.instanceColor.needsUpdate = true;
+    malha.receiveShadow = this.qualidade.sombras > 0;
+    malha.frustumCulled = false;
+    scene.add(malha);
+  }
+
+  // ── Rochas no mar e ilhas ao longe (profundidade no horizonte) ──
+  _horizonte() {
+    const { scene, rnd, tema, colisao } = this;
+    const R = CONFIG.mundo.raioAreia;
+    const matRocha = materialSuave('#FFFFFF', { roughness: 0.85, map: Texturas.pedraMusgo(27) });
+    const geoRocha = new THREE.IcosahedronGeometry(1, 1);
+    // Rochas perto da praia (algumas dentro da água)
+    for (let i = 0; i < 9; i++) {
+      const a = rnd() * Math.PI * 2, d = R + rnd.entre(0.5, 5);
+      const r = new THREE.Mesh(geoRocha, matRocha);
+      const esc = rnd.entre(0.7, 1.8);
+      r.position.set(Math.cos(a) * d, CONFIG.mundo.nivelAgua - 0.2 + esc * 0.3, Math.sin(a) * d);
+      r.scale.set(esc * rnd.entre(0.8, 1.4), esc * 0.7, esc);
+      r.rotation.set(rnd(), rnd() * 6.28, rnd());
+      r.castShadow = r.receiveShadow = true;
+      scene.add(r);
+    }
+    // Ilhas distantes: montes com "copas" no topo, dentro da névoa
+    const matMonte = materialSuave('#6E8F62', { roughness: 1 });
+    const matCopa = materialSuave('#4F8A3C', { roughness: 1 });
+    for (let i = 0; i < 5; i++) {
+      const a = rnd() * Math.PI * 2, d = rnd.entre(60, 85);
+      const g = new THREE.Group();
+      const largura = rnd.entre(8, 18), altura = rnd.entre(4, 11);
+      const monte = new THREE.Mesh(new THREE.SphereGeometry(1, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), matMonte);
+      monte.scale.set(largura, altura, largura * rnd.entre(0.6, 1));
+      g.add(monte);
+      for (let k = 0; k < 4; k++) {
+        const copa = new THREE.Mesh(new THREE.SphereGeometry(rnd.entre(1.5, 3), 8, 6), matCopa);
+        copa.position.set(rnd.entre(-largura * 0.4, largura * 0.4), altura * rnd.entre(0.5, 0.9), rnd.entre(-largura * 0.3, largura * 0.3));
+        g.add(copa);
+      }
+      g.position.set(Math.cos(a) * d, CONFIG.mundo.nivelAgua - 0.5, Math.sin(a) * d);
+      scene.add(g);
+    }
+    void colisao;
+  }
+
   /** Ponto inicial: um pouco abaixo (sul) da grade, no chão. */
   _pontoInicial(layout) {
     const lim = this.grade.limites;
@@ -329,6 +422,7 @@ export class Mundo {
     this.tempo += dt;
     if (this._uTempoCasas) this._uTempoCasas.value = this.tempo;
     if (this._uTempoAgua) this._uTempoAgua.value = this.tempo;
+    if (this._uTempoTufos) this._uTempoTufos.value = this.tempo;
     for (const a of this.atualizaveis) a.atualizar(dt, this.tempo);
   }
 }

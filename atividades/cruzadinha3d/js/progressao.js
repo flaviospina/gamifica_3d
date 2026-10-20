@@ -6,6 +6,7 @@
 // ============================================================
 import * as THREE from 'three';
 import { materialSuave } from './temas/pecas.js';
+import { Texturas } from './texturas.js';
 
 const ALTURA_PILAR = 2.3;
 
@@ -42,7 +43,7 @@ export class Progressao {
     const geoPilar = new THREE.CylinderGeometry(0.5, 0.62, ALTURA_PILAR, 14);
     geoPilar.translate(0, ALTURA_PILAR / 2, 0);
     const geoAnel = new THREE.TorusGeometry(0.62, 0.08, 8, 20);
-    const matPedra = materialSuave(cores.pedra || '#9A9C9F', { roughness: 0.85 });
+    const matPedra = materialSuave('#FFFFFF', { roughness: 0.9, map: Texturas.pedraMusgo(25) });
     const matAnel = materialSuave('#7D8086', { roughness: 0.6 });
 
     for (const totem of mundo.totens) {

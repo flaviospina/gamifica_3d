@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { Texturas } from '../texturas.js';
 
 /** Agrupa transformações e gera um único InstancedMesh por tipo de peça. */
 export class Instanciador {
@@ -114,18 +115,18 @@ export function geometrias() {
 export function criarVegetacao(cores) {
   const g = geometrias();
   const inst = {
-    tronco:       new Instanciador(g.tronco, materialSuave(cores.tronco, { roughness: 0.9 })),
-    copaRedonda:  new Instanciador(g.copaRedonda, materialSuave(cores.copa)),
-    copaPinheiro: new Instanciador(g.copaPinheiro, materialSuave(cores.copaEscura)),
-    arbusto:      new Instanciador(g.arbusto, materialSuave(cores.arbusto)),
-    pedra:        new Instanciador(g.pedra, materialSuave(cores.pedra, { roughness: 0.6 })),
+    tronco:       new Instanciador(g.tronco, materialSuave('#FFFFFF', { roughness: 0.95, map: Texturas.casca(cores.tronco) })),
+    copaRedonda:  new Instanciador(g.copaRedonda, materialSuave('#FFFFFF', { roughness: 0.85, map: Texturas.folhas(cores.copa) })),
+    copaPinheiro: new Instanciador(g.copaPinheiro, materialSuave('#FFFFFF', { roughness: 0.85, map: Texturas.folhas(cores.copaEscura, 43) })),
+    arbusto:      new Instanciador(g.arbusto, materialSuave('#FFFFFF', { roughness: 0.85, map: Texturas.folhas(cores.arbusto, 45) })),
+    pedra:        new Instanciador(g.pedra, materialSuave('#FFFFFF', { roughness: 0.8, map: Texturas.pedraMusgo() })),
     flor:         new Instanciador(g.flor, materialSuave('#ffffff', { roughness: 0.5 }), { sombra: false }),
     caule:        new Instanciador(g.caule, materialSuave(cores.copaEscura), { sombra: false }),
     mancha:       new Instanciador(g.manchaGrama, materialSuave(cores.gramaEscura), { sombra: false, recebeSombra: true }),
     cogumeloPe:   new Instanciador(g.cogumeloPe, materialSuave('#F6EFE2', { roughness: 0.8 })),
     cogumeloChapeu: new Instanciador(g.cogumeloChapeu, materialSuave('#E0533B', { roughness: 0.55 })),
-    pedraCaminho: new Instanciador(g.pedraCaminho, materialSuave(cores.pedraCaminho || '#CFC6B2', { roughness: 0.9 }), { sombra: false }),
-    montinho:     new Instanciador(g.montinho, materialSuave(cores.gramaEscura, { roughness: 0.95 }), { sombra: true }),
+    pedraCaminho: new Instanciador(g.pedraCaminho, materialSuave('#FFFFFF', { roughness: 0.9, map: Texturas.pedra('#D8CDB4', 13) }), { sombra: false }),
+    montinho:     new Instanciador(g.montinho, materialSuave('#FFFFFF', { roughness: 0.95, map: Texturas.grama(cores.gramaEscura, 33) }), { sombra: true }),
   };
 
   return {

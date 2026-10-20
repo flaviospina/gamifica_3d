@@ -13,15 +13,15 @@ export default {
   nome: 'Ilha da Ciência',
   disciplina: 'Ciências',
 
-  ceu:   { topo: '#4D9BE6', horizonte: '#D7EDFF' },
-  nevoa: { cor: '#D7EDFF', perto: 28, longe: 75 },
+  ceu:   { topo: '#3F8FE0', horizonte: '#FFE7C9' },
+  nevoa: { cor: '#F6E4CC', perto: 30, longe: 90 },
   luz: {
-    sol: '#FFF3D2', intensidadeSol: 2.8,
-    ceu: '#BFDCFF', chao: '#6B9E45', intensidadeAmbiente: 1.15,
-    direcaoSol: [12, 20, 8],
+    sol: '#FFD9A3', intensidadeSol: 3.4,            // fim de tarde dourado
+    ceu: '#CFE3FF', chao: '#7FA64A', intensidadeAmbiente: 1.0,
+    direcaoSol: [16, 11, -12],
   },
   cores: {
-    grama: '#6EBF4B', gramaEscura: '#55A338', areia: '#EBD9A0', agua: '#3DA3D8', aguaFunda: '#2B7FB5',
+    grama: '#83C94C', gramaEscura: '#5FAA36', areia: '#F0DDA6', agua: '#35B3D9', aguaFunda: '#1F6FB8',
     ladrilho: '#FBF7EF', ladrilhoLateral: '#E6DBC2', ladrilhoBorda: '#CBBF9E',
     tronco: '#8A5A2B', copa: '#4FA43A', copaEscura: '#3D8A2E', arbusto: '#5CB048', pedra: '#9A9C9F',
     totem: '#286456', totemAceso: '#E0A537', flores: ['#FFD84D', '#FF7A9E', '#FFFFFF', '#9ED3FF'],
@@ -36,10 +36,7 @@ export default {
     const densidade = qualidade.decoracao;
 
     // Manchas de grama mais escura (só visual)
-    for (let i = 0; i < 40 * densidade; i++) {
-      const a = rnd() * Math.PI * 2, d = rnd.entre(2, raioIlha - 1);
-      veg.mancha(Math.cos(a) * d, Math.sin(a) * d, rnd);
-    }
+    // (manchas de grama removidas: a textura do chão e os tufos já dão variação)
 
     // Árvores em anel pela borda + algumas no interior
     const tentar = (n, dMin, dMax, fn) => {
@@ -71,6 +68,11 @@ export default {
     });
     tentar(Math.round(60 * densidade), 2, raioIlha - 1.5, (x, z) => {
       veg.flor(x, z, rnd, rnd.escolher(this.cores.flores));
+    });
+    // Canteiros: grupos de flores da mesma cor
+    tentar(Math.round(10 * densidade), 3, raioIlha - 2, (x, z) => {
+      const cor = rnd.escolher(this.cores.flores);
+      for (let k = 0; k < 7; k++) veg.flor(x + rnd.entre(-0.7, 0.7), z + rnd.entre(-0.7, 0.7), rnd, cor);
     });
     // Cogumelos ao pé das árvores, montinhos de grama e um caminho de pedras do início até a grade
     tentar(Math.round(14 * densidade), raioIlha - 6, raioIlha - 1.5, (x, z) => veg.cogumelo(x, z, rnd));

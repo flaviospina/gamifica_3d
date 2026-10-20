@@ -4,6 +4,7 @@
 // ============================================================
 import * as THREE from 'three';
 import { materialSuave, caixaArredondada } from './temas/pecas.js';
+import { Texturas } from './texturas.js';
 
 const geoCache = {};
 function geometriasTotem() {
@@ -42,7 +43,7 @@ function texturaNumero(numero, corFundo, corTexto) {
 export function criarTotem({ numero, cor = '#286456', corAceso = '#E0A537' }) {
   const g = geometriasTotem();
   const grupo = new THREE.Group();
-  const matPoste = materialSuave(cor, { roughness: 0.6 });
+  const matPoste = materialSuave(cor, { roughness: 0.7, map: Texturas.pedraMusgo(23) });
   const poste = new THREE.Mesh(g.poste, matPoste);
   const base = new THREE.Mesh(g.base, matPoste);
   const texNum = texturaNumero(numero, '#FBF7EF', '#161F38');
