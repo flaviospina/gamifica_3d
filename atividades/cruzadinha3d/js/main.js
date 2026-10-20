@@ -67,10 +67,28 @@ class Jogo {
     this.audio = new Audio();
   }
 
+  /** Testa se o navegador consegue criar um contexto WebGL (sem o Three.js). */
+  static temWebGL() {
+    if (new URLSearchParams(location.search).has('semwebgl')) return false; // para testes
+    try {
+      const cv = document.createElement('canvas');
+      const gl = cv.getContext('webgl2') || cv.getContext('webgl') || cv.getContext('experimental-webgl');
+      if (!gl) return false;
+      gl.getExtension('WEBGL_lose_context')?.loseContext();
+      return true;
+    } catch { return false; }
+  }
+
   async iniciar() {
+    if (!Jogo.temWebGL()) return this._iniciarSemWebGL();
     carregamento.progresso(45, 'Preparando a ilha…');
     const canvas = $('cena');
-    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: this.qualidade.antialias, powerPreference: 'high-performance' });
+    try {
+      this.renderer = new THREE.WebGLRenderer({ canvas, antialias: this.qualidade.antialias, powerPreference: 'high-performance' });
+    } catch (err) {
+      console.warn('[Ilha] WebGL indisponível, abrindo em modo 2D:', err?.message);
+      return this._iniciarSemWebGL();
+    }
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.qualidade.pixelRatioMax));
     this.renderer.setSize(window.innerWidth, window.innerHeight, false);
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -231,14 +249,83 @@ class Jogo {
   }
 
   _abrirMapa() {
-    if (this.celebracao.ativa) return;
-    this.controles.ativo = false;
+    if (this.celebracao?.ativa) return;
+    if (this.controles) this.controles.ativo = false;
     this.mapa.abrir();
   }
 
-  _fecharAjuda() { $('ajuda').hidden = true; if ($('menu').hidden) { this.controles.ativo = true; } else $('btnComoJogar').focus(); }
+  _fecharAjuda() { $('ajuda').hidden = true; if ($('menu').hidden) { if (this.controles) this.controles.ativo = true; } else $('btnComoJogar').focus(); }
 
   _respirar() { return new Promise(r => setTimeout(r, 30)); }
+
+  /**
+   * Modo sem WebGL: a cruzadinha abre direto no mapa 2D, com a mesma lógica,
+   * pontuação, progresso e envio ao servidor. Nada de 3D é criado.
+   */
+  async _iniciarSemWebGL() {
+    this.semWebGL = true;
+    carregamento.progresso(60, 'Este navegador está sem 3D. Abrindo o mapa da cruzadinha…');
+    this.layout = montarLayout(this.cruzadinha);
+    this.estado = new EstadoCruzadinha(this.layout);
+    this.tema = obterTema(this.cruzadinha.tema || this.cruzadinha.disciplina);
+    $('cena').hidden = true;
+    document.body.classList.add('sem-webgl');
+
+    // Painel da dica (igual ao 3D)
+    this.painel = new PainelDica({
+      raiz: $('painelDica'), numero: $('dicaNumero'), texto: $('dicaTexto'), casinhas: $('casinhas'), entrada: $('entradaResposta'),
+      mensagem: $('dicaMensagem'), btnResponder: $('btnResponder'), btnDica: $('btnRevelar'), btnFechar: $('btnFecharDica'), btnOuvir: $('btnOuvir'),
+    }, this.estado, {
+      aoResponder: (i, letras) => this._responder(i, letras),
+      aoDica: (i) => this._revelar(i),
+      aoFechar: () => { this.audio.fecharPainel(); this.mapa.atualizar(); $('btnFecharMapa').focus(); },
+      aoOuvir: (txt) => this._falar(txt),
+    });
+    $('entradaResposta').addEventListener('input', () => this.audio.tecla());
+    // Zonas (mesma regra do 3D) sem pilares
+    const { calcularZonas } = await import('./progressao.js');
+    const zonas = calcularZonas(this.estado.total);
+    const ordenadas = [...this.estado.palavras].sort((a, b) => a.numero - b.numero || a.indice - b.indice);
+    const zonaDe = new Map(); let k = 0;
+    zonas.tamanhos.forEach((tam, z) => { for (let i = 0; i < tam; i++) zonaDe.set(ordenadas[k++].indice, z); });
+    const faltam = (i) => Math.max(0, (zonas.limiares[zonaDe.get(i) ?? 0] || 0) - this.estado.resolvidas.size);
+
+    this.mapa = new Mapa2D({
+      raiz: $('mapa2d'), grade: $('grade2d'), pistasH: $('pistasH'), pistasV: $('pistasV'), btnFechar: $('btnFecharMapa'), status: $('mapaStatus'),
+    }, this.estado, this.layout, {
+      aoAbrirPalavra: (i) => { this.modo = '2d'; this.audio.abrirPainel(); this.painel.abrir(i); },
+      faltam,
+      aoFechar: () => { if (!$('resultado').hidden) return; setTimeout(() => this.mapa.abrir(), 50); }, // sem 3D, o mapa é a tela principal (menos na tela de resultado)
+    });
+    $('btnFecharMapa').textContent = 'Menu ☰';
+    $('btnFecharMapa').addEventListener('click', () => this._alternarMenu(true));
+    this.modo = '2d';
+
+    this.estado.on('palavraResolvida', ({ indice }) => { this.mapa.atualizar(); this._atualizarHud(); this._salvarProgresso(); if (this.painel.aberto && this.painel.indice !== indice) this.painel.atualizarFixas(); });
+    this.estado.on('letraRevelada', () => { this.mapa.atualizar(); this._salvarProgresso(); });
+    this.estado.on('concluida', () => setTimeout(() => this._concluir(), 1200));
+
+    if (this.dados.modo === 'aluno') {
+      this.armazenamento = new ArmazenamentoServidor({ api: this.dados.api, csrf: this.dados.csrf, atividadeId: this.cruzadinha.id, progressoInicial: this.dados.progresso });
+    } else {
+      this.armazenamento = new ArmazenamentoLocal((this.dados.modo === 'teste' ? 'teste_' : '') + (this.cruzadinha.id || this.cruzadinha.titulo || 'demo').toString().replace(/\W+/g, '_'));
+    }
+    this.resultadoEnviado = false;
+    const dados = this.armazenamento.carregar();
+    if (dados?.estado) { this.estado.restaurar(dados.estado); this.tempoJogo = Number(dados.tempoSeg) || 0; }
+    window.addEventListener('pagehide', () => {
+      this.armazenamento.salvarAgora({ estado: this.estado.serializar(), tempoSeg: Math.round(this.tempoJogo), modo: '2d' });
+      if (this.dados.modo === 'aluno' && !this.terminada && !this.resultadoEnviado && this.estado.resolvidas.size > 0) this.armazenamento.enviarResultado(this._resumo(), { parcial: true, beacon: true });
+    });
+
+    this._hud(this.tema);
+    this._tInicio = performance.now();
+    setInterval(() => { if (!document.hidden && !this.terminada) this.tempoJogo += 1; }, 1000);
+    carregamento.concluir();
+    this.mapa.abrir();
+    this._aviso('Seu navegador está sem suporte a 3D. Você joga a mesma cruzadinha no mapa, com a mesma pontuação. 🗺️', 7000);
+    if (this.estado.concluida) { this.terminada = true; }
+  }
 
   /** Brilho suave (bloom), vinheta e tom quente — só nas qualidades Média e Alta. */
   _posProcessamento() {
@@ -296,6 +383,7 @@ class Jogo {
   }
 
   _aoResolver(indice, origem, novas) {
+    if (this.semWebGL) return;
     // Letras caem do céu em sequência, do início para o fim da palavra
     const p = this.layout.palavras[indice];
     const ordem = new Map(p.celulas.map((ch, k) => [ch, k]));
@@ -351,6 +439,7 @@ class Jogo {
     if (this.terminada) return;
     this.terminada = true;
     this.painel.fechar();
+    if (this.semWebGL) { this.audio.celebracao(); this._salvarProgresso(); this._aviso(mensagem('final', this.dados.jogador.nome), 5000); setTimeout(() => { this._mostrarResultado(); this.mapa.fechar(); }, 1500); return; }
     this.mapa.fechar();
     this.telaAvatar.aberta && this.telaAvatar.confirmar();
     this.controles.ativo = false;
@@ -443,7 +532,7 @@ class Jogo {
     $('hudTitulo').textContent = this.cruzadinha.titulo || 'Ilha das Palavras';
     $('hudTema').textContent = `${tema.nome} · ${this.cruzadinha.disciplina || ''} ${this.cruzadinha.ano ? '· ' + this.cruzadinha.ano : ''}`;
     $('hudTempo').hidden = !this.desafio.ativo;
-    document.body.classList.toggle('toque', ehToque());
+    document.body.classList.toggle('toque', ehToque() && !this.semWebGL);
     this._atualizarHud();
 
     const sel = $('selQualidade');
@@ -452,8 +541,8 @@ class Jogo {
     $('chkMovimento').checked = this.reduzirMovimento;
     $('chkMovimento').addEventListener('change', (ev) => {
       this.reduzirMovimento = ev.target.checked;
-      this.cameraJogo.reduzirMovimento = this.reduzirMovimento;
-      this.particulas.fator = this.reduzirMovimento ? 0 : this.qualidade.particulas;
+      if (this.cameraJogo) this.cameraJogo.reduzirMovimento = this.reduzirMovimento;
+      if (this.particulas) this.particulas.fator = this.reduzirMovimento ? 0 : this.qualidade.particulas;
       prefs.gravar('reduzirMovimento', this.reduzirMovimento);
     });
     const textoGrande = prefs.ler('textoGrande', false);
@@ -468,16 +557,17 @@ class Jogo {
     $('chkMusica').addEventListener('change', (ev) => this.audio.ligarMusica(ev.target.checked));
     $('btnMapa').addEventListener('click', () => { this._alternarMenu(false); this._abrirMapa(); });
     $('btnMenuMapa').addEventListener('click', () => { this._alternarMenu(false); this._abrirMapa(); });
-    $('btnMenuAvatar').addEventListener('click', () => { this._alternarMenu(false); this._abrirAvatar(); });
+    $('btnMenuAvatar').addEventListener('click', () => { this._alternarMenu(false); if (!this.semWebGL) this._abrirAvatar(); });
+    if (this.semWebGL) { $('btnMenuAvatar').hidden = true; $('btnVoltarInicio').hidden = true; $('selQualidade').closest('label').hidden = true; $('chkToque').closest('label').hidden = true; $('btnMapa').hidden = true; }
     $('btnComoJogar').addEventListener('click', () => { $('ajuda').hidden = false; $('btnFecharAjuda').focus(); });
     $('btnFecharAjuda').addEventListener('click', () => this._fecharAjuda());
     $('chkToque').checked = ehToque();
     $('chkToque').addEventListener('change', (ev) => document.body.classList.toggle('toque', ev.target.checked));
     $('btnMenu').addEventListener('click', () => this._alternarMenu());
     $('btnFecharMenu').addEventListener('click', () => this._alternarMenu(false));
-    $('btnVoltarInicio').addEventListener('click', () => { this.personagem.colocarEm(this.mundo.pontoInicial, Math.PI); this._alternarMenu(false); });
+    $('btnVoltarInicio').addEventListener('click', () => { if (this.personagem) this.personagem.colocarEm(this.mundo.pontoInicial, Math.PI); this._alternarMenu(false); });
     $('btnReiniciar').addEventListener('click', () => { if (confirm('Começar esta cruzadinha do zero? Seu melhor resultado já salvo não muda.')) this._reiniciar(); });
-    $('btnContinuarExplorando').addEventListener('click', () => { $('resultado').hidden = true; this.celebracao.encerrar(); this.controles.ativo = true; });
+    $('btnContinuarExplorando').addEventListener('click', () => { $('resultado').hidden = true; if (this.semWebGL) { this.mapa.abrir(); return; } this.celebracao.encerrar(); this.controles.ativo = true; });
     $('btnJogarDeNovo').addEventListener('click', () => this._reiniciar());
     if (this.dados.voltar) { const b = $('btnSair'); b.hidden = false; b.href = this.dados.voltar; b.addEventListener('click', () => { this._salvarProgresso(); }); }
     if (new URLSearchParams(location.search).has('debug')) $('hudFps').hidden = false;
@@ -494,7 +584,7 @@ class Jogo {
     const menu = $('menu');
     const abrir = forcar ?? menu.hidden;
     menu.hidden = !abrir;
-    this.controles.ativo = !abrir && !this.painel.aberto && !this.mapa.aberto && !this.telaAvatar.aberta;
+    if (this.controles) this.controles.ativo = !abrir && !this.painel.aberto && !this.mapa.aberto && !this.telaAvatar.aberta;
     if (abrir) { this.audio.clique(); $('btnFecharMenu').focus(); }
   }
 

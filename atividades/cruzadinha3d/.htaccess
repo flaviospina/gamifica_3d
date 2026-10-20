@@ -13,9 +13,18 @@
 AddType application/javascript .js
 AddType application/json .json
 
-# Cache dos arquivos do jogo (altere o parâmetro ?v= no index.php ao publicar nova versão)
+# Cache: os módulos ES importam uns aos outros sem ?v=, então o navegador
+# NÃO pode guardar js/css por dias (misturaria versões antigas e novas).
+# "no-cache" = sempre revalida com o servidor (ETag/Last-Modified): se não
+# mudou, a resposta é 304 e nada é baixado de novo.
+<IfModule mod_headers.c>
+  <FilesMatch "\.(js|css)$">
+    Header set Cache-Control "no-cache, must-revalidate"
+  </FilesMatch>
+  <FilesMatch "\.(png|jpg|svg|ico|webmanifest)$">
+    Header set Cache-Control "public, max-age=604800"
+  </FilesMatch>
+</IfModule>
 <IfModule mod_expires.c>
-  ExpiresActive On
-  ExpiresByType application/javascript "access plus 7 days"
-  ExpiresByType text/css "access plus 7 days"
+  ExpiresActive Off
 </IfModule>

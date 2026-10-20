@@ -241,3 +241,10 @@ body.texto-grande .hud-linha { font-size: 15px; }
 .pista2d:focus-visible { outline: 3px solid var(--dourado); }
 #painelDica { z-index: 45; }
 @media (max-width: 760px) { .mapa-corpo { grid-template-columns: 1fr; } }
+
+/* ── Modo sem WebGL (mapa como tela principal) ─────────────── */
+body.sem-webgl { background: linear-gradient(180deg, #1c2748 0%, var(--navy) 100%); }
+body.sem-webgl #hudAjuda, body.sem-webgl #dicaInteracao, body.sem-webgl #controlesToque { display: none !important; }
+body.sem-webgl #mapa2d { background: transparent; align-items: flex-start; padding-top: 128px; }
+body.sem-webgl #aviso { z-index: 60; }
+@media (max-width: 600px) { body.sem-webgl #mapa2d { padding-top: 96px; } }
