@@ -18,7 +18,13 @@ foreach (['cruzadinha_config', 'cruzadinha_progresso', 'cruzadinha_tentativas', 
 try {
     $col = $pdo->query("SHOW COLUMNS FROM atividades LIKE 'tipo'")->fetch();
     $tem = str_contains((string)($col['Type'] ?? ''), 'cruzadinha3d');
-    $itens[] = [$ok($tem), "atividades.tipo aceita 'cruzadinha3d'" . ($tem ? '' : ' — rode o ALTER TABLE do sql/cruzadinha3d.sql')];
+    $tipoAtual = (string)($col['Type'] ?? '');
+    $alterSugerido = '';
+    if (!$tem && preg_match('#^enum\((.*)\)$#i', $tipoAtual, $m)) {
+        // Monta o ALTER mantendo exatamente os valores que já existem no servidor
+        $alterSugerido = "ALTER TABLE atividades MODIFY tipo ENUM($m[1],'cruzadinha3d') NOT NULL;";
+    }
+    $itens[] = [$ok($tem), "atividades.tipo aceita 'cruzadinha3d'" . ($tem ? '' : " — tipo atual: $tipoAtual. Rode no phpMyAdmin: " . ($alterSugerido ?: 'o ALTER TABLE do sql/cruzadinha3d.sql'))];
 } catch (PDOException $e) { $itens[] = ['❌', 'Não foi possível ler atividades.tipo']; }
 // Motor
 $motor = cruz_motor();
