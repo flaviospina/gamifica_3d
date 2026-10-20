@@ -110,6 +110,10 @@ export class Mundo {
       sol.shadow.normalBias = 0.03;
       sol.shadow.radius = 3;
     }
+    // Luz de contorno fria vinda de trás (realça silhuetas, estilo animação)
+    const contorno = new THREE.DirectionalLight('#BFD8FF', 0.9);
+    contorno.position.set(-tema.luz.direcaoSol[0], 8, -tema.luz.direcaoSol[2]);
+    scene.add(contorno);
     this.sol = sol;
   }
 
@@ -138,27 +142,65 @@ export class Mundo {
   }
 
   _agua() {
-    const { tema, scene } = this;
-    const geo = new THREE.PlaneGeometry(320, 320, 1, 1);
-    const mat = materialBrilho(tema.cores.agua, { transparent: true, opacity: 0.9, roughness: 0.12 });
+    const { tema, scene, qualidade } = this;
+    const R = CONFIG.mundo.raioAreia;
+    // Malha fina perto da ilha (onde as ondas aparecem) e grossa longe
+    const seg = qualidade.aguaSegmentos || 96;
+    const geo = new THREE.PlaneGeometry(320, 320, seg, seg);
+    geo.rotateX(-Math.PI / 2); // coordenadas locais = mundo (x, 0, z)
+    const mat = materialBrilho(tema.cores.agua, { transparent: true, opacity: 0.92, roughness: 0.18 });
+    const uTempo = { value: 0 };
+    this._uTempoAgua = uTempo;
+    mat.onBeforeCompile = (shader) => {
+      shader.uniforms.uTempo = uTempo;
+      shader.uniforms.uRaio = { value: R };
+      shader.uniforms.uCorFunda = { value: new THREE.Color(tema.cores.aguaFunda || tema.cores.agua) };
+      shader.uniforms.uCorRasa = { value: new THREE.Color(tema.cores.agua) };
+      shader.vertexShader = `
+        uniform float uTempo; uniform float uRaio;
+        varying float vProfundidade; varying float vEspuma;
+        // Ondas em anéis que viajam para a praia: altas no mar aberto, pequenas na areia
+        float ondaAltura(vec2 p) {
+          float d = length(p);
+          float amp = 0.06 + 0.42 * smoothstep(0.0, 22.0, d - uRaio);
+          float anel  = sin(d * 0.85 - uTempo * 1.6);
+          float cruz  = sin(p.x * 0.45 + p.y * 0.35 + uTempo * 0.9) * 0.45;
+          float fino  = sin(p.x * 1.7 - uTempo * 2.3) * sin(p.y * 1.3 + uTempo * 1.7) * 0.18;
+          return amp * (anel + cruz + fino);
+        }
+      ` + shader.vertexShader
+        .replace('#include <beginnormal_vertex>', `
+          vec2 p = position.xz;
+          float e = 0.6;
+          float h  = ondaAltura(p);
+          float hx = ondaAltura(p + vec2(e, 0.0));
+          float hz = ondaAltura(p + vec2(0.0, e));
+          vec3 objectNormal = normalize(vec3(h - hx, e, h - hz));
+          #ifdef USE_TANGENT
+            vec3 objectTangent = vec3( tangent.xyz );
+          #endif`)
+        .replace('#include <begin_vertex>', `
+          vec3 transformed = vec3(position.x, position.y + h, position.z);
+          float dist = length(p);
+          vProfundidade = smoothstep(uRaio, uRaio + 26.0, dist);
+          vEspuma = (1.0 - smoothstep(uRaio, uRaio + 2.2, dist)) * (0.5 + 0.5 * sin(dist * 0.85 - uTempo * 1.6));`);
+      shader.fragmentShader = 'uniform vec3 uCorFunda; uniform vec3 uCorRasa; varying float vProfundidade; varying float vEspuma;\n' + shader.fragmentShader
+        .replace('#include <color_fragment>', `#include <color_fragment>
+          diffuseColor.rgb = mix(uCorRasa, uCorFunda, vProfundidade);
+          diffuseColor.rgb = mix(diffuseColor.rgb, vec3(1.0), clamp(vEspuma, 0.0, 1.0) * 0.55);`);
+    };
+    mat.customProgramCacheKey = () => 'aguaOndas';
     const agua = new THREE.Mesh(geo, mat);
-    agua.rotation.x = -Math.PI / 2;
     agua.position.y = CONFIG.mundo.nivelAgua;
+    agua.frustumCulled = false;
     scene.add(agua);
-    // Espuma: anel claro na borda da ilha
-    const espuma = new THREE.Mesh(
-      new THREE.RingGeometry(CONFIG.mundo.raioAreia + 0.1, CONFIG.mundo.raioAreia + 1.2, 56),
-      new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.45 })
-    );
-    espuma.rotation.x = -Math.PI / 2;
-    espuma.position.y = CONFIG.mundo.nivelAgua + 0.01;
-    scene.add(espuma);
-    this.atualizaveis.push({
-      atualizar: (dt, t) => {
-        agua.position.y = CONFIG.mundo.nivelAgua + Math.sin(t * 0.9) * 0.03;
-        espuma.material.opacity = 0.35 + Math.sin(t * 1.3) * 0.12;
-      },
-    });
+
+    // Sol no céu (disco luminoso na direção da luz)
+    const sol = new THREE.Mesh(new THREE.SphereGeometry(3.2, 16, 12), new THREE.MeshBasicMaterial({ color: '#FFF4CC', fog: false }));
+    sol.position.set(...tema.luz.direcaoSol).normalize().multiplyScalar(105);
+    const halo = new THREE.Mesh(new THREE.SphereGeometry(6, 16, 12), new THREE.MeshBasicMaterial({ color: '#FFE9A8', transparent: true, opacity: 0.25, fog: false, depthWrite: false }));
+    halo.position.copy(sol.position);
+    scene.add(sol, halo);
   }
 
   // ── Grade da cruzadinha: blocos instanciados ──────────────────
@@ -171,7 +213,22 @@ export class Mundo {
 
     const geo = caixaArredondada(T - folga, H, T - folga, 0.07, 2);
     geo.translate(0, H / 2, 0);
+    // Atributo por casa: 0 = normal, 1 = palavra resolvida (verde reluzente pulsando)
+    const resolvido = new THREE.InstancedBufferAttribute(new Float32Array(celulas.length), 1);
+    geo.setAttribute('resolvido', resolvido);
     const mat = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.55 });
+    const uTempo = { value: 0 };
+    mat.onBeforeCompile = (shader) => {
+      shader.uniforms.uTempo = uTempo;
+      shader.vertexShader = 'attribute float resolvido;\nvarying float vResolvido;\nvarying vec3 vPosMundo;\n' + shader.vertexShader
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\n vResolvido = resolvido;\n vPosMundo = (instanceMatrix * vec4(position, 1.0)).xyz;');
+      shader.fragmentShader = 'uniform float uTempo;\nvarying float vResolvido;\nvarying vec3 vPosMundo;\n' + shader.fragmentShader
+        .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+          float pulso = 0.55 + 0.45 * sin(uTempo * 2.2 + vPosMundo.x * 0.9 + vPosMundo.z * 0.7);
+          totalEmissiveRadiance += vec3(0.12, 0.95, 0.42) * vResolvido * (0.45 + 0.4 * pulso);`);
+    };
+    mat.customProgramCacheKey = () => 'casasCruzadinha';
+    this._uTempoCasas = uTempo;
     const malha = new THREE.InstancedMesh(geo, mat, celulas.length);
     malha.castShadow = qualidade.sombras > 0;
     malha.receiveShadow = qualidade.sombras > 0;
@@ -193,9 +250,19 @@ export class Mundo {
     malha.instanceColor.needsUpdate = true;
     scene.add(malha);
 
+    const corVerde = new THREE.Color(tema.cores.casaResolvida || '#2ECC6A');
     return {
       malha, mapa, origemX, origemZ, linhas: layout.linhas, colunas: layout.colunas,
       posicaoDe: (l, c) => ({ x: origemX + c * T, z: origemZ + l * T }),
+      /** Marca a casa como resolvida: fica verde e reluzente. */
+      resolverCasa: (l, c) => {
+        const cel = mapa.get(`${l},${c}`);
+        if (!cel) return;
+        malha.setColorAt(cel.indice, corVerde);
+        malha.instanceColor.needsUpdate = true;
+        resolvido.setX(cel.indice, 1);
+        resolvido.needsUpdate = true;
+      },
       /** Retângulo ocupado pela grade (com margem) — usado para não decorar em cima. */
       limites: {
         minX: origemX - T * 1.5, maxX: origemX + (layout.colunas - 1) * T + T * 1.5,
@@ -230,9 +297,14 @@ export class Mundo {
       for (const t of totens) if (Math.hypot(t.grupo.position.x - x, t.grupo.position.z - z) < raio + 1) return false;
       return true;
     };
+    this.areaLivre = areaLivre;
+    // Caminho de pedras: do início até a entrada da grade
+    const caminho = [];
+    const fimZ = lim.maxZ - 0.8;
+    for (let z = ini.z + 1.0; z > fimZ; z -= 0.95) caminho.push([ini.x + Math.sin(z * 1.7) * 0.25, z]);
     const resultado = this.tema.decorar({
       scene: this.scene, rnd: this.rnd, qualidade: this.qualidade,
-      colisao: this.colisao, areaLivre, raioIlha: CONFIG.mundo.raioIlha,
+      colisao: this.colisao, areaLivre, raioIlha: CONFIG.mundo.raioIlha, caminho,
     });
     if (resultado && resultado.atualizar) this.atualizaveis.push(resultado);
   }
@@ -255,6 +327,8 @@ export class Mundo {
 
   atualizar(dt) {
     this.tempo += dt;
+    if (this._uTempoCasas) this._uTempoCasas.value = this.tempo;
+    if (this._uTempoAgua) this._uTempoAgua.value = this.tempo;
     for (const a of this.atualizaveis) a.atualizar(dt, this.tempo);
   }
 }

@@ -30,7 +30,7 @@ export class Celebracao {
     Object.assign(this, { scene, mundo, blocos, personagem, cameraJogo, particulas, nome, titulo, reduzirMovimento });
     this.ativa = false;
     this.t = 0;
-    this.elevacaoFinal = 2.6;
+    this.elevacaoFinal = 1.4;
     this.aoTerminar = null;
     this._terminou = false;
   }

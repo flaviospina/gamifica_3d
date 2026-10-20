@@ -53,7 +53,8 @@ export class Personagem {
       escuro: materialSuave('#2A2A2A', { roughness: 0.5 }),
       calca:  materialSuave('#2E3A5C', { roughness: 0.8 }),
       branco: materialSuave('#FFFFFF', { roughness: 0.25 }),
-      iris:   materialSuave('#3B2A1A', { roughness: 0.2 }),
+      iris:   materialSuave('#5A3B22', { roughness: 0.15 }),
+      pupila: materialSuave('#1A1410', { roughness: 0.1 }),
       brilho: new THREE.MeshBasicMaterial({ color: '#FFFFFF' }),
       bochecha: new THREE.MeshStandardMaterial({ color: '#FF8FA3', roughness: 0.9, transparent: true, opacity: 0.45 }),
     };
@@ -65,7 +66,7 @@ export class Personagem {
 
     // Tronco (cápsula levemente em forma de pera)
     const tronco = new THREE.Mesh(new THREE.CapsuleGeometry(0.26, 0.3, 8, 20), M.roupa);
-    tronco.position.y = 0.78; tronco.scale.set(1.05, 1, 0.92);
+    tronco.position.y = 0.78; tronco.scale.set(1.08, 1, 0.95);
     // Golinha
     const gola = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.05, 10, 20), M.branco);
     gola.position.y = 1.05; gola.rotation.x = Math.PI / 2;
@@ -84,25 +85,36 @@ export class Personagem {
     franja.position.set(0.1, 1.7, 0.2); franja.scale.set(1.1, 0.5, 0.8);
     const franja2 = new THREE.Mesh(new THREE.SphereGeometry(0.17, 16, 12), M.cabelo);
     franja2.position.set(-0.15, 1.69, 0.19); franja2.scale.set(1.0, 0.5, 0.8);
+    const tufo = new THREE.Mesh(new THREE.SphereGeometry(0.16, 14, 10), M.cabelo);
+    tufo.position.set(0.05, 1.8, -0.02); tufo.scale.set(1.1, 0.8, 1.1);
+    const tufo2 = new THREE.Mesh(new THREE.SphereGeometry(0.13, 14, 10), M.cabelo);
+    tufo2.position.set(-0.18, 1.74, -0.14); tufo2.scale.set(1, 0.8, 1);
+    const ladoE = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 10), M.cabelo); ladoE.position.set(-0.33, 1.5, -0.05); ladoE.scale.set(0.5, 1.1, 0.9);
+    const ladoD = ladoE.clone(); ladoD.position.x = 0.33;
     // Olhos: esclera + íris + brilho
     const olhos = new THREE.Group();
     const partes = { branco: [], iris: [], brilho: [], boch: [], sobr: [] };
     for (const sx of [-1, 1]) {
-      const branco = new THREE.Mesh(new THREE.SphereGeometry(0.085, 18, 14), M.branco);
-      branco.position.set(sx * 0.13, 1.42, 0.3); branco.scale.set(1, 1.15, 0.6);
-      const iris = new THREE.Mesh(new THREE.SphereGeometry(0.048, 14, 12), M.iris);
-      iris.position.set(sx * 0.13, 1.42, 0.345); iris.scale.set(1, 1.1, 0.5);
-      const brilho = new THREE.Mesh(new THREE.SphereGeometry(0.016, 8, 6), M.brilho);
-      brilho.position.set(sx * 0.13 + 0.018, 1.445, 0.368);
-      // Sobrancelha
-      const sobr = new THREE.Mesh(new THREE.CapsuleGeometry(0.018, 0.09, 4, 8), M.cabelo);
-      sobr.position.set(sx * 0.13, 1.54, 0.31); sobr.rotation.z = Math.PI / 2 + sx * 0.18;
+      // Olhos grandes e expressivos: esclera, íris colorida, pupila e dois brilhos
+      const branco = new THREE.Mesh(new THREE.SphereGeometry(0.1, 18, 14), M.branco);
+      branco.position.set(sx * 0.135, 1.42, 0.295); branco.scale.set(1, 1.2, 0.6);
+      const iris = new THREE.Mesh(new THREE.SphereGeometry(0.06, 14, 12), M.iris);
+      iris.position.set(sx * 0.135, 1.415, 0.345); iris.scale.set(1, 1.1, 0.45);
+      const pupila = new THREE.Mesh(new THREE.SphereGeometry(0.032, 10, 8), M.pupila);
+      pupila.position.set(sx * 0.135, 1.412, 0.368); pupila.scale.set(1, 1.1, 0.4);
+      const brilho = new THREE.Mesh(new THREE.SphereGeometry(0.018, 8, 6), M.brilho);
+      brilho.position.set(sx * 0.135 + 0.022, 1.45, 0.378);
+      const brilho2 = new THREE.Mesh(new THREE.SphereGeometry(0.009, 6, 5), M.brilho);
+      brilho2.position.set(sx * 0.135 - 0.018, 1.395, 0.38);
+      // Sobrancelha arqueada (mais grossa, expressiva)
+      const sobr = new THREE.Mesh(new THREE.CapsuleGeometry(0.024, 0.1, 4, 8), M.cabelo);
+      sobr.position.set(sx * 0.135, 1.555, 0.305); sobr.rotation.z = Math.PI / 2 + sx * 0.22; sobr.rotation.y = sx * 0.3;
       // Bochecha corada
       const boch = new THREE.Mesh(new THREE.SphereGeometry(0.05, 10, 8), M.bochecha);
       boch.position.set(sx * 0.2, 1.33, 0.28); boch.scale.set(1.2, 0.8, 0.4);
-      partes.branco.push(branco); partes.iris.push(iris); partes.brilho.push(brilho); partes.boch.push(boch); partes.sobr.push(sobr);
+      partes.branco.push(branco); partes.iris.push(iris); partes.brilho.push(brilho, brilho2); partes.boch.push(boch); partes.sobr.push(sobr); (partes.pupila ||= []).push(pupila);
     }
-    olhos.add(fundirMalhas(partes.branco, M.branco), fundirMalhas(partes.iris, M.iris), fundirMalhas(partes.brilho, M.brilho));
+    olhos.add(fundirMalhas(partes.branco, M.branco), fundirMalhas(partes.iris, M.iris), fundirMalhas(partes.pupila, M.pupila), fundirMalhas(partes.brilho, M.brilho));
     // Nariz e sorriso
     const nariz = new THREE.Mesh(new THREE.SphereGeometry(0.035, 10, 8), M.pele);
     nariz.position.set(0, 1.36, 0.36);
@@ -128,14 +140,14 @@ export class Personagem {
     this.pernaD = new THREE.Group(); this.pernaD.position.set(0.14, 0.5, 0);
     this.pernaE.add(new THREE.Mesh(geoPerna, M.calca));
     this.pernaD.add(new THREE.Mesh(geoPerna, M.calca));
-    const geoPe = new THREE.SphereGeometry(0.12, 14, 10);
-    const peE = new THREE.Mesh(geoPe, M.escuro); peE.position.set(0, -0.42, 0.05); peE.scale.set(1, 0.65, 1.35);
-    const peD = new THREE.Mesh(geoPe, M.escuro); peD.position.set(0, -0.42, 0.05); peD.scale.set(1, 0.65, 1.35);
+    const geoPe = new THREE.SphereGeometry(0.13, 14, 10);
+    const peE = new THREE.Mesh(geoPe, M.escuro); peE.position.set(0, -0.42, 0.06); peE.scale.set(1.05, 0.7, 1.45);
+    const peD = new THREE.Mesh(geoPe, M.escuro); peD.position.set(0, -0.42, 0.06); peD.scale.set(1.05, 0.7, 1.45);
     this.pernaE.add(peE); this.pernaD.add(peD);
 
     // Partes estáticas fundidas por material (menos draw calls)
     const cabecaFundida = fundirMalhas([cabeca, orelhaE, orelhaD, nariz], M.pele);
-    const cabeloFundido = fundirMalhas([cabelo, franja, franja2, ...partes.sobr], M.cabelo);
+    const cabeloFundido = fundirMalhas([cabelo, franja, franja2, tufo, tufo2, ladoE, ladoD, ...partes.sobr], M.cabelo);
     const bochechas = fundirMalhas(partes.boch, M.bochecha);
     this.corpo.add(tronco, gola, cabecaFundida, cabeloFundido, olhos, bochechas, sorriso,
       this.bracoE, this.bracoD, this.pernaE, this.pernaD);

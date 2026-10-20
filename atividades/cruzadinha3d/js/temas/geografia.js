@@ -48,6 +48,7 @@ export function decorarBasico(tema, ctx, { pinheiros = 0.5 } = {}) {
     n++;
   }
   for (let i = 0; i < 50 * d; i++) { const a = rnd() * 6.283, r = rnd.entre(2, raioIlha - 1.5); veg.flor(Math.cos(a) * r, Math.sin(a) * r, rnd, rnd.escolher(tema.cores.flores)); }
+  if (ctx.caminho) for (const [x, z] of ctx.caminho) veg.pedraCaminho(x, z, rnd);
   colisao.malhasCamera.push(...veg.construir(scene, qualidade));
   return { atualizar() {} };
 }

@@ -57,14 +57,16 @@ export class BlocosLetra {
 
     const T = CONFIG.ladrilho.tamanho, H = CONFIG.ladrilho.altura;
     this.alturaBase = H;
-    this.tamanho = T * 0.78;
-    const geo = caixaArredondada(this.tamanho, 0.5, this.tamanho, 0.1, 2);
-    geo.translate(0, 0.25, 0);
+    this.tamanho = T * 0.86;
+    // Placa fina: a letra fica "gravada" em cima da casa, sem aumentar a altura da cruzadinha
+    this.espessura = 0.07;
+    const geo = caixaArredondada(this.tamanho, this.espessura, this.tamanho, 0.03, 2);
+    geo.translate(0, this.espessura / 2, 0);
     const total = grade.mapa.size;
     this.letraIdx = new THREE.InstancedBufferAttribute(new Float32Array(total), 1);
     geo.setAttribute('letraIdx', this.letraIdx);
 
-    const mat = new THREE.MeshStandardMaterial({ map: atlas.textura, color: cores.bloco || '#FBF7EF', roughness: 0.5 });
+    const mat = new THREE.MeshStandardMaterial({ map: atlas.textura, color: cores.bloco || '#FFFFFF', roughness: 0.45 });
     mat.onBeforeCompile = (shader) => {
       shader.vertexShader = 'attribute float letraIdx;\n' + shader.vertexShader.replace(
         '#include <uv_vertex>',
@@ -73,7 +75,7 @@ export class BlocosLetra {
            // Letra só na face de cima; laterais usam a célula vazia do atlas (branca)
            vec2 celula = vec2(mod(letraIdx, ${COLUNAS_ATLAS}.0), ${COLUNAS_ATLAS - 1}.0 - floor(letraIdx / ${COLUNAS_ATLAS}.0));
            vec2 vazia = vec2(${COLUNAS_ATLAS - 1}.0, 0.0);
-           vMapUv = (uv + (position.y > 0.42 ? celula : vazia)) / ${COLUNAS_ATLAS}.0;
+           vMapUv = (uv + (position.y > 0.05 ? celula : vazia)) / ${COLUNAS_ATLAS}.0;
          #endif`
       );
     };
@@ -85,7 +87,8 @@ export class BlocosLetra {
     this.malha.receiveShadow = qualidade.sombras > 0;
     this.malha.frustumCulled = false;
     const escondido = new THREE.Matrix4().makeScale(0, 0, 0);
-    for (let i = 0; i < total; i++) this.malha.setMatrixAt(i, escondido);
+    const branco = new THREE.Color('#FFFFFF');
+    for (let i = 0; i < total; i++) { this.malha.setMatrixAt(i, escondido); this.malha.setColorAt(i, branco); }
     this.malha.instanceMatrix.needsUpdate = true;
     this.malha.count = total;
     scene.add(this.malha);
@@ -121,6 +124,14 @@ export class BlocosLetra {
     this.malha.instanceMatrix.needsUpdate = true;
   }
 
+  /** Tinge a placa da letra (ex.: verde quando a palavra foi resolvida). */
+  pintar(l, c, cor) {
+    const it = this.visiveis.get(`${l},${c}`) ?? { indice: this._indicePorChave.get(`${l},${c}`) };
+    if (it.indice === undefined) return;
+    this.malha.setColorAt(it.indice, new THREE.Color(cor));
+    if (this.malha.instanceColor) this.malha.instanceColor.needsUpdate = true;
+  }
+
   /** Reposiciona todos os blocos visíveis (usado quando a grade sobe na celebração). */
   reposicionar() { for (const it of this.visiveis.values()) if (!this.animacoes.find(a => a.indice === it.indice)) this._colocar(it, 0, 1); }
 
@@ -136,7 +147,7 @@ export class BlocosLetra {
       if (p >= 1) {
         this._colocar(a, 0, 1);
         this.animacoes.splice(i, 1);
-        for (const fn of this.ouvintes.pousou) fn({ x: a.x, y: this.alturaBase + this.elevacao + 0.5, z: a.z, letra: a.letra });
+        for (const fn of this.ouvintes.pousou) fn({ x: a.x, y: this.alturaBase + this.elevacao + this.espessura, z: a.z, letra: a.letra });
       }
     }
   }

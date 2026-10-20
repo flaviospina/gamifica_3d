@@ -25,6 +25,7 @@ import { ehToque, prefs } from './util.js';
 import { Audio } from './audio.js';
 import { TelaAvatar } from './avatar.js';
 import { Mapa2D } from './mapa2d.js';
+import { Animais } from './animais.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -91,6 +92,9 @@ class Jogo {
     this.particulas = new Particulas(this.scene, 260, this.reduzirMovimento ? 0 : this.qualidade.particulas);
     let kEncaixe = 0;
     this.blocos.on('pousou', ({ x, y, z }) => { this.particulas.explodir(x, y, z, { quantidade: 12, forca: 2.2, cores: ['#E0A537', '#FBF7EF', tema.cores.copa] }); this.audio.encaixe(kEncaixe++); });
+
+    // Vida na ilha (pássaros, coelhos, cervo, borboletas) — poucos e discretos
+    this.animais = new Animais({ scene: this.scene, rnd: this.mundo.rnd, qualidade: this.qualidade, areaLivre: this.mundo.areaLivre, raioIlha: CONFIG.mundo.raioIlha, audio: this.audio });
 
     carregamento.progresso(80, 'Chamando o explorador…');
     const avatarSalvo = this.dados.avatar || TelaAvatar.carregarSalvo() || {};
@@ -265,6 +269,8 @@ class Jogo {
     }
     const totem = this.mundo.totens.find(t => t.dados.palavra === indice);
     if (totem) totem.marcarResolvido();
+    // Casas da palavra ficam verdes e reluzentes (com um pequeno atraso para acompanhar a queda das letras)
+    p.celulas.forEach((ch, k) => { const cel = this.estado.celulas.get(ch); setTimeout(() => { this.mundo.grade.resolverCasa(cel.l, cel.c); this.blocos.pintar(cel.l, cel.c, '#8EF0B0'); }, 900 + 120 * k); });
     if (origem === 'automatica') this._aviso(mensagem('automatica'));
     this.progressao.verificar(true);
     this._atualizarHud();
@@ -375,6 +381,7 @@ class Jogo {
       this.blocos.mostrar(cel.l, cel.c, cel.letra, { queda: false });
     }
     for (const t of this.mundo.totens) if (this.estado.resolvidas.has(t.dados.palavra)) t.marcarResolvido();
+    for (const i of this.estado.resolvidas) for (const ch of this.layout.palavras[i].celulas) { const cel = this.estado.celulas.get(ch); this.mundo.grade.resolverCasa(cel.l, cel.c); this.blocos.pintar(cel.l, cel.c, '#8EF0B0'); }
     this.progressao.verificar(false);
     if (this.estado.resolvidas.size > 0) this._aviso(`Bem-vindo(a) de volta! ${this.estado.resolvidas.size} palavra(s) já no lugar. 🧭`, 3600);
     if (this.estado.concluida) { this.terminada = true; this.celebracao.iniciar(null); this.celebracao.atualizar(10); this.celebracao.encerrar(); }
@@ -488,6 +495,7 @@ class Jogo {
 
     this.personagem.atualizar(dt, { eixo, pular: this.controles.pular }, this.mundo.colisao, bloqueado);
     this.mundo.atualizar(dt);
+    this.animais.atualizar(dt, this.mundo.tempo, this.personagem.posicao);
     this.blocos.atualizar(dt);
     this.particulas.atualizar(dt);
     this.progressao.atualizar(dt);

@@ -32,10 +32,67 @@ export class Audio {
     this.ganhoMusica = this.ctx.createGain();
     this.ganhoMusica.gain.value = 0;
     this.ganhoMusica.connect(this.master);
+    this.ganhoAmbiente = this.ctx.createGain();
+    this.ganhoAmbiente.gain.value = this.somLigado ? 1 : 0;
+    this.ganhoAmbiente.connect(this.master);
+    this._iniciarAmbiente();
     return this.ctx;
   }
 
-  ligarSom(v) { this.somLigado = v; prefs.gravar('som', v); if (this.ganhoSons) this.ganhoSons.gain.setTargetAtTime(v ? 1 : 0, this.ctx.currentTime, 0.05); }
+  /** Buffer de ruído reutilizável (4 s, em loop). */
+  _ruidoBuffer() {
+    if (this._bufRuido) return this._bufRuido;
+    const ctx = this.ctx, n = ctx.sampleRate * 4;
+    const buf = ctx.createBuffer(1, n, ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    let b0 = 0, b1 = 0, b2 = 0;
+    for (let i = 0; i < n; i++) { // ruído "rosa" aproximado (mais grave, menos chiado)
+      const w = Math.random() * 2 - 1;
+      b0 = 0.99765 * b0 + w * 0.0990460; b1 = 0.96300 * b1 + w * 0.2965164; b2 = 0.57000 * b2 + w * 1.0526913;
+      d[i] = (b0 + b1 + b2 + w * 0.1848) * 0.08;
+    }
+    this._bufRuido = buf;
+    return buf;
+  }
+
+  /** Ondas e brisa do mar: ruído filtrado com respiração lenta. Bem sutil. */
+  _iniciarAmbiente() {
+    const ctx = this.ctx;
+    // Ondas: ruído grave, volume sobe e desce a cada ~7 s
+    const ondas = ctx.createBufferSource(); ondas.buffer = this._ruidoBuffer(); ondas.loop = true;
+    const fOndas = ctx.createBiquadFilter(); fOndas.type = 'lowpass'; fOndas.frequency.value = 420; fOndas.Q.value = 0.5;
+    const gOndas = ctx.createGain(); gOndas.gain.value = 0.12;
+    const lfo = ctx.createOscillator(); lfo.frequency.value = 0.14;
+    const lfoG = ctx.createGain(); lfoG.gain.value = 0.09;
+    lfo.connect(lfoG).connect(gOndas.gain);
+    ondas.connect(fOndas).connect(gOndas).connect(this.ganhoAmbiente);
+    ondas.start(); lfo.start();
+    // Brisa: ruído mais agudo e bem baixo, com variação própria
+    const brisa = ctx.createBufferSource(); brisa.buffer = this._ruidoBuffer(); brisa.loop = true; brisa.playbackRate.value = 1.37;
+    const fBrisa = ctx.createBiquadFilter(); fBrisa.type = 'bandpass'; fBrisa.frequency.value = 900; fBrisa.Q.value = 0.4;
+    const gBrisa = ctx.createGain(); gBrisa.gain.value = 0.035;
+    const lfo2 = ctx.createOscillator(); lfo2.frequency.value = 0.05;
+    const lfo2G = ctx.createGain(); lfo2G.gain.value = 0.025;
+    lfo2.connect(lfo2G).connect(gBrisa.gain);
+    brisa.connect(fBrisa).connect(gBrisa).connect(this.ganhoAmbiente);
+    brisa.start(); lfo2.start();
+  }
+
+  /** Chilreio curto de pássaro (2 ou 3 notinhas em glissando), bem baixo. */
+  passaro() {
+    const ctx = this._garantir(); if (!ctx || !this.somLigado) return;
+    const n = 2 + Math.floor(Math.random() * 2);
+    const base = 2200 + Math.random() * 900;
+    for (let i = 0; i < n; i++) {
+      this._tom({ freq: base, para: base * (1.25 + Math.random() * 0.3), tipo: 'sine', dur: 0.09, ganho: 0.045, atraso: i * 0.14, curva: 0.6 });
+    }
+  }
+
+  ligarSom(v) {
+    this.somLigado = v; prefs.gravar('som', v);
+    if (this.ganhoSons) this.ganhoSons.gain.setTargetAtTime(v ? 1 : 0, this.ctx.currentTime, 0.05);
+    if (this.ganhoAmbiente) this.ganhoAmbiente.gain.setTargetAtTime(v ? 1 : 0, this.ctx.currentTime, 0.3);
+  }
   ligarMusica(v) { this.musicaLigada = v; prefs.gravar('musica', v); if (v) this.iniciarMusica(); else this.pararMusica(); }
 
   // ── Primitivas ───────────────────────────────────────────────

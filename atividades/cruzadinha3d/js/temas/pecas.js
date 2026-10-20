@@ -97,6 +97,10 @@ export function geometrias() {
   geo.caule.translate(0, 0.16, 0);
   geo.manchaGrama = new THREE.CircleGeometry(1, 16);
   geo.manchaGrama.rotateX(-Math.PI / 2);
+  geo.cogumeloPe = new THREE.CylinderGeometry(0.06, 0.08, 0.22, 8); geo.cogumeloPe.translate(0, 0.11, 0);
+  geo.cogumeloChapeu = new THREE.SphereGeometry(0.16, 10, 7, 0, Math.PI * 2, 0, Math.PI / 2); geo.cogumeloChapeu.translate(0, 0.2, 0);
+  geo.pedraCaminho = new THREE.CylinderGeometry(0.42, 0.46, 0.06, 9); geo.pedraCaminho.translate(0, 0.03, 0);
+  geo.montinho = new THREE.SphereGeometry(1, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2);
   geo.nuvem = aglomerado([[0, 0, 0, 1], [0.9, -0.1, 0.1, 0.75], [-0.9, -0.15, 0, 0.7], [0.3, 0.35, -0.2, 0.65], [-0.3, 0.3, 0.25, 0.6]], 9);
   geo.pronto = true;
   return geo;
@@ -118,6 +122,10 @@ export function criarVegetacao(cores) {
     flor:         new Instanciador(g.flor, materialSuave('#ffffff', { roughness: 0.5 }), { sombra: false }),
     caule:        new Instanciador(g.caule, materialSuave(cores.copaEscura), { sombra: false }),
     mancha:       new Instanciador(g.manchaGrama, materialSuave(cores.gramaEscura), { sombra: false, recebeSombra: true }),
+    cogumeloPe:   new Instanciador(g.cogumeloPe, materialSuave('#F6EFE2', { roughness: 0.8 })),
+    cogumeloChapeu: new Instanciador(g.cogumeloChapeu, materialSuave('#E0533B', { roughness: 0.55 })),
+    pedraCaminho: new Instanciador(g.pedraCaminho, materialSuave(cores.pedraCaminho || '#CFC6B2', { roughness: 0.9 }), { sombra: false }),
+    montinho:     new Instanciador(g.montinho, materialSuave(cores.gramaEscura, { roughness: 0.95 }), { sombra: true }),
   };
 
   return {
@@ -147,6 +155,20 @@ export function criarVegetacao(cores) {
       const p = new THREE.Vector3(x, 0, z);
       inst.caule.adicionar(p);
       inst.flor.adicionar(p, { cor: new THREE.Color(cor), escala: rnd.entre(0.8, 1.2), rotacaoY: rnd() * 6.28 });
+    },
+    cogumelo(x, z, rnd) {
+      const esc = rnd.entre(0.7, 1.3);
+      inst.cogumeloPe.adicionar(new THREE.Vector3(x, 0, z), { escala: esc });
+      inst.cogumeloChapeu.adicionar(new THREE.Vector3(x, 0, z), { escala: esc, rotacaoY: rnd() * 6.28, cor: new THREE.Color(rnd() < 0.5 ? '#E0533B' : '#F2A33A') });
+    },
+    pedraCaminho(x, z, rnd) {
+      inst.pedraCaminho.adicionar(new THREE.Vector3(x, 0, z), { rotacaoY: rnd() * 6.28, escala: [rnd.entre(0.8, 1.1), 1, rnd.entre(0.8, 1.1)] });
+    },
+    /** Montinho de grama (colina suave). Devolve o raio para o colisor. */
+    montinho(x, z, rnd) {
+      const r = rnd.entre(1.4, 2.6);
+      inst.montinho.adicionar(new THREE.Vector3(x, -0.02, z), { escala: [r, r * 0.35, r], rotacaoY: rnd() * 6.28 });
+      return { raio: r * 0.8, altura: r * 0.35 };
     },
     mancha(x, z, rnd) {
       inst.mancha.adicionar(new THREE.Vector3(x, 0.006, z), { rotacaoY: rnd() * 6.28, escala: rnd.entre(0.6, 1.5) });

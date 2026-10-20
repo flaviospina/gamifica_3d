@@ -67,7 +67,7 @@ export const CONFIG = {
 
 /** Qualidade gráfica: parâmetros por nível. */
 export const QUALIDADE = {
-  baixa: { pixelRatioMax: 1,   antialias: false, sombras: 0,    decoracao: 0.45, nuvens: 0, particulas: 0.3 },
-  media: { pixelRatioMax: 1.5, antialias: true,  sombras: 1024, decoracao: 0.8,  nuvens: 4, particulas: 0.7 },
-  alta:  { pixelRatioMax: 2,   antialias: true,  sombras: 2048, decoracao: 1,    nuvens: 8, particulas: 1 },
+  baixa: { pixelRatioMax: 1,   antialias: false, sombras: 0,    decoracao: 0.45, nuvens: 0, particulas: 0.3, aguaSegmentos: 64,  animais: 0.5 },
+  media: { pixelRatioMax: 1.5, antialias: true,  sombras: 1024, decoracao: 0.8,  nuvens: 4, particulas: 0.7, aguaSegmentos: 110, animais: 1 },
+  alta:  { pixelRatioMax: 2,   antialias: true,  sombras: 2048, decoracao: 1,    nuvens: 8, particulas: 1,   aguaSegmentos: 160, animais: 1 },
 };

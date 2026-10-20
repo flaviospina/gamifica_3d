@@ -68,3 +68,16 @@ Versões completas em `integracao/`; edições manuais para V1 em `integracao/LE
 | Nova tentativa pior após "Jogar de novo" | ✅ não grava (melhor continua 147) |
 | Relatório e CSV | ✅ "Bia Martins 9/9 · 2 tentativas · 2 dicas · ⭐ 8 · 147 XP · 3D · Completou" |
 | Caminho V1 (trigger) | ✅ `aluno_perfil.xp_total` 125, melhor mantido após tentativa pior |
+
+## 7. Revisão visual 0.5.1 (pedido após a fase 5)
+
+- Letras viraram **placas finas** sobre as casas: a cruzadinha mantém a altura inicial. Casas de palavras
+  resolvidas ficam **verde reluzente** (brilho pulsante no shader) e a placa da letra também fica verde-clara.
+- **Mar com ondas** no shader: anéis que viajam para a praia, altos no mar aberto e quase planos na areia;
+  cor mais escura ao longe, espuma na beira.
+- **Vida na ilha** (moderada): 4 gaivotas circulando, 2 coelhos que mordiscam e pulam (fogem suavemente do
+  personagem), 1 cervo que pasta e caminha, 3 borboletas. Na qualidade Baixa, metade.
+- **Sons sutis**: ondas (ruído grave que "respira"), brisa, chilreio ocasional. Entram no mesmo botão de som.
+- **Polimento de animação**: olhos maiores com íris, pupila e dois brilhos; sobrancelhas arqueadas; cabelo com
+  tufos e mechas laterais; sapatos arredondados; luz de contorno fria. Cenário com cogumelos, montinhos de grama,
+  caminho de pedras até a grade e sol no céu.

@@ -72,6 +72,13 @@ export default {
     tentar(Math.round(60 * densidade), 2, raioIlha - 1.5, (x, z) => {
       veg.flor(x, z, rnd, rnd.escolher(this.cores.flores));
     });
+    // Cogumelos ao pé das árvores, montinhos de grama e um caminho de pedras do início até a grade
+    tentar(Math.round(14 * densidade), raioIlha - 6, raioIlha - 1.5, (x, z) => veg.cogumelo(x, z, rnd));
+    tentar(Math.round(5 * densidade), 7, raioIlha - 5, (x, z) => {
+      const info = veg.montinho(x, z, rnd);
+      colisao.adicionarPlataforma({ minX: x - info.raio * 0.7, maxX: x + info.raio * 0.7, minZ: z - info.raio * 0.7, maxZ: z + info.raio * 0.7, topo: info.altura * 0.9, base: 0 });
+    });
+    if (ctx.caminho) for (const [x, z] of ctx.caminho) veg.pedraCaminho(x, z, rnd);
 
     const malhas = veg.construir(scene, qualidade);
     colisao.malhasCamera.push(...malhas);
