@@ -23,18 +23,27 @@ export function detectarQualidade() {
   if (ehToque()) pontos -= 1;
 
   // Nome da GPU (quando o navegador expõe)
+  let dedicada = false;
   try {
     const cv = document.createElement('canvas');
-    const gl = cv.getContext('webgl2') || cv.getContext('webgl');
+    const gl = cv.getContext('webgl2');
     if (!gl) return 'baixa';
     const info = gl.getExtension('WEBGL_debug_renderer_info');
     const nome = info ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL)).toLowerCase() : '';
     if (/swiftshader|llvmpipe|software/.test(nome)) return 'baixa';
-    if (/nvidia|radeon|rtx|geforce|apple m\d|apple gpu/.test(nome)) pontos += 2;
+    dedicada = /nvidia|radeon|rtx|geforce|apple m\d|apple gpu|arc\b/.test(nome);
+    if (dedicada) pontos += 2;
     if (/mali-4|mali-t|adreno [1-4]|powervr|intel hd graphics [2-4]/.test(nome)) pontos -= 1;
   } catch { /* ignora */ }
 
-  if (pontos >= 4) return 'alta';
+  // Se a placa de vídeo já reiniciou nos últimos dias, começa mais leve
+  const perdas = (prefs.ler('gpuPerdas', []) || []).filter((t) => Date.now() - t < 7 * 86400e3);
+  if (perdas.length >= 2) return 'baixa';
+  if (perdas.length === 1) pontos -= 2;
+
+  // "Alta" (bloom, sombras 2048, 8 mil tufos) só com GPU dedicada ou Apple;
+  // placas integradas sem nome conhecido ficam no máximo em "média".
+  if (pontos >= 4 && dedicada) return 'alta';
   if (pontos >= 2) return 'media';
   return 'baixa';
 }

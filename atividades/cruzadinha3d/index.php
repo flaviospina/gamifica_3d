@@ -8,7 +8,7 @@
 //                         parcial e o visual do explorador; grava via api.php
 //   · ?id=N&teste=1     → professor dono da atividade testa o jogo sem gravar
 // ============================================================
-$versao = '0.5.3';               // mude para invalidar o cache dos arquivos js/css
+$versao = '0.5.4';               // mude para invalidar o cache dos arquivos js/css
 $three  = '0.186.1';             // mesma versão de js/config.js
 
 require_once __DIR__ . '/lib.php';
@@ -191,6 +191,17 @@ $descricao = 'A cruzadinha virou um mundo 3D: ande sobre o tabuleiro, encontre o
 </div>
 <div id="dicaInteracao" class="hud" hidden>Totem por perto! <kbd>E</kbd> para ver a dica</div>
 <div id="aviso" class="hud" role="status" aria-live="polite" hidden></div>
+<!-- Placa de vídeo reiniciou e o 3D não voltou -->
+<div id="contextoPerdido" class="sobreposicao" role="alertdialog" aria-modal="true" aria-labelledby="contextoTitulo" hidden>
+  <div class="painel">
+    <h2 id="contextoTitulo">O 3D parou por um instante 🛠️</h2>
+    <p>A placa de vídeo do computador reiniciou e o navegador não devolveu o 3D. Seu progresso está salvo. Você pode recarregar (o jogo volta em uma qualidade mais leve) ou continuar no mapa 2D, com a mesma pontuação.</p>
+    <div class="acoes">
+      <button id="btnContextoRecarregar" class="botao" type="button">🔄 Recarregar o 3D</button>
+      <a id="btnContexto2d" class="botao secundario" href="#">🗺️ Continuar no mapa 2D</a>
+    </div>
+  </div>
+</div>
 <div id="hudAjuda" class="hud">
   <kbd>W A S D</kbd> ou setas: andar · <kbd>Espaço</kbd>: pular · <kbd>E</kbd>: totem<br>
   arraste o mouse: girar · roda: zoom · <kbd>M</kbd>: mapa 2D · <kbd>Esc</kbd>: menu
@@ -268,6 +279,7 @@ $descricao = 'A cruzadinha virou um mundo 3D: ande sobre o tabuleiro, encontre o
         <button id="btnComoJogar" class="botao secundario largo" type="button">❓ Como jogar</button>
         <button id="btnVoltarInicio" class="botao secundario largo" type="button">🏝️ Voltar ao início da ilha</button>
         <button id="btnReiniciar" class="botao secundario largo" type="button">🔄 Recomeçar cruzadinha</button>
+        <a id="btnDiag3d" class="botao secundario largo" href="diagnostico3d.html" target="_blank" rel="noopener" hidden>🩺 Por que estou sem 3D?</a>
         <a id="btnSair" class="botao secundario largo" href="#" hidden>🚪 Salvar e voltar ao Gamifica</a>
       </div>
       <div>

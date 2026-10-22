@@ -107,6 +107,7 @@ export class Mundo {
     sol.position.set(...tema.luz.direcaoSol);
     sol.target.position.set(0, 0, 0);
     scene.add(sol, sol.target);
+    this.sol = sol;
     if (qualidade.sombras > 0) {
       sol.castShadow = true;
       sol.shadow.mapSize.set(qualidade.sombras, qualidade.sombras);

@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Diagnóstico 3D — Ilha das Palavras</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 760px; margin: 30px auto; padding: 0 16px; color: #161F38; background: #FBF7EF; }
+  h1 { font-size: 22px; } h2 { font-size: 17px; margin-top: 26px; }
+  li { padding: 8px 0; border-bottom: 1px solid #e6e0d4; list-style: none; } ul { padding: 0; }
+  .dica { background: #fff; border-left: 4px solid #E0A537; padding: 12px 14px; border-radius: 8px; margin: 10px 0; }
+  .ok { color: #286456; font-weight: 600; } .erro { color: #b3261e; font-weight: 600; }
+  button, a.botao { display: inline-block; background: #161F38; color: #FBF7EF; border: 0; border-radius: 10px; padding: 10px 16px; font-size: 15px; cursor: pointer; text-decoration: none; margin: 6px 8px 0 0; }
+  textarea { width: 100%; height: 140px; font: 12px/1.4 monospace; margin-top: 10px; }
+  code { background: #eee; padding: 1px 5px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<h1>🩺 Ilha das Palavras — diagnóstico do 3D</h1>
+<p>Esta página testa se o navegador consegue criar o WebGL 2 que o jogo usa e explica o que fazer quando não consegue. Nada é enviado a lugar nenhum.</p>
+<ul id="itens"></ul>
+<h2>O que fazer</h2>
+<div id="dicas"></div>
+<h2>Relatório para suporte</h2>
+<textarea id="relatorio" readonly></textarea>
+<button id="btnCopiar" type="button">📋 Copiar relatório</button>
+<a class="botao" id="btnVoltar" href="index.php?demo=1">🏝️ Tentar o jogo em 3D</a>
+<script>
+(function () {
+  const itens = document.getElementById('itens');
+  const dicas = document.getElementById('dicas');
+  const rel = [];
+  const linha = (ok, txt) => { const li = document.createElement('li'); li.innerHTML = (ok === null ? 'ℹ️ ' : ok ? '<span class="ok">✅</span> ' : '<span class="erro">❌</span> ') + txt; itens.appendChild(li); rel.push((ok === null ? '[i] ' : ok ? '[ok] ' : '[x] ') + li.textContent.slice(2)); };
+  const dica = (html) => { const d = document.createElement('div'); d.className = 'dica'; d.innerHTML = html; dicas.appendChild(d); };
+  const esc = (t) => String(t).replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c]));
+
+  function testar(tipo) {
+    const cv = document.createElement('canvas');
+    let motivo = '';
+    cv.addEventListener('webglcontextcreationerror', (e) => { motivo = e.statusMessage || ''; });
+    let gl = null;
+    try { gl = cv.getContext(tipo, { failIfMajorPerformanceCaveat: false }); } catch (e) { motivo = e.message; }
+    return { gl, motivo };
+  }
+  const ua = navigator.userAgent;
+  const chrome = /Chrome\/(\d+)/.exec(ua), firefox = /Firefox\/(\d+)/.exec(ua), safari = /Version\/(\d+).*Safari/.exec(ua);
+  linha(null, 'Navegador: ' + esc(chrome ? 'Chrome/Edge ' + chrome[1] : firefox ? 'Firefox ' + firefox[1] : safari ? 'Safari ' + safari[1] : ua));
+  linha(null, 'Sistema: ' + esc(navigator.platform || '?') + ' · ' + (navigator.hardwareConcurrency || '?') + ' núcleos · ' + (navigator.deviceMemory ? navigator.deviceMemory + ' GB' : 'memória não informada') + ' · tela ' + screen.width + '×' + screen.height + ' @' + (window.devicePixelRatio || 1) + 'x');
+
+  const w2 = testar('webgl2');
+  const w1 = w2.gl ? null : testar('webgl');
+  let gpu = '', vendor = '', maxTex = 0;
+  const gl = w2.gl || (w1 && w1.gl);
+  if (gl) {
+    try { const info = gl.getExtension('WEBGL_debug_renderer_info'); if (info) { gpu = gl.getParameter(info.UNMASKED_RENDERER_WEBGL); vendor = gl.getParameter(info.UNMASKED_VENDOR_WEBGL); } } catch (e) {}
+    try { maxTex = gl.getParameter(gl.MAX_TEXTURE_SIZE); } catch (e) {}
+  }
+  linha(!!w2.gl, 'WebGL 2 (o que o jogo usa): ' + (w2.gl ? 'disponível' : 'indisponível' + (w2.motivo ? ' — motivo do navegador: "' + esc(w2.motivo) + '"' : '')));
+  if (w1) linha(!!w1.gl, 'WebGL 1: ' + (w1.gl ? 'disponível (mas o jogo precisa do WebGL 2)' : 'indisponível' + (w1.motivo ? ' — "' + esc(w1.motivo) + '"' : '')));
+  if (gpu) linha(!/swiftshader|llvmpipe|software/i.test(gpu), 'Placa de vídeo: ' + esc(gpu) + (vendor ? ' (' + esc(vendor) + ')' : '') + (maxTex ? ' · textura máx. ' + maxTex : ''));
+  let perdas = [];
+  try { perdas = JSON.parse(localStorage.getItem('cruz3d_gpuPerdas') || '[]'); } catch (e) {}
+  if (!Array.isArray(perdas)) perdas = [];
+  const recentes = perdas.filter((t) => Date.now() - t < 7 * 86400e3);
+  linha(recentes.length === 0, recentes.length ? 'A placa de vídeo reiniciou durante o jogo ' + recentes.length + ' vez(es) nos últimos 7 dias (última: ' + new Date(Math.max.apply(null, recentes)).toLocaleString('pt-BR') + ')' : 'Nenhuma perda de contexto registrada neste navegador');
+  let qual = ''; try { qual = JSON.parse(localStorage.getItem('cruz3d_qualidade') || '""'); } catch (e) {}
+  linha(null, 'Qualidade salva: ' + (qual || 'automática'));
+
+  const m = (w2.motivo + ' ' + (w1 ? w1.motivo : '')).toLowerCase();
+  if (w2.gl && !/swiftshader|llvmpipe|software/i.test(gpu)) {
+    dica('✅ Está tudo certo: este navegador consegue abrir o jogo em 3D. Se ele abriu no mapa 2D, recarregue a página do jogo sem o parâmetro <code>semwebgl</code>.');
+  } else {
+    if (/blocked|bloque/.test(m)) dica('<b>O navegador bloqueou o 3D para este site</b> depois de falhas seguidas da placa de vídeo (o Chrome faz isso por cerca de 2 minutos, ou até reiniciar). <b>Feche todas as janelas do navegador e abra de novo.</b> O jogo volta em uma qualidade mais leve automaticamente.');
+    if (/gpu process|crash|caiu/.test(m)) dica('<b>O processo de vídeo do navegador caiu.</b> Feche e reabra o navegador. Se repetir, atualize o driver da placa de vídeo.');
+    if (!w2.gl && w1 && w1.gl) dica('<b>Só existe WebGL 1.</b> Atualize o navegador e o driver da placa de vídeo, ou use Chrome, Edge ou Firefox recentes: o jogo precisa de WebGL 2 (padrão desde 2017).');
+    if (/swiftshader|llvmpipe|software/i.test(gpu)) dica('<b>O 3D está rodando por software</b> (sem placa de vídeo). Vai funcionar, mas devagar: use a qualidade Baixa.');
+    dica('<b>Aceleração gráfica desligada?</b> No Chrome/Edge abra <code>chrome://settings/system</code> e ative "Usar aceleração gráfica quando disponível"; depois reinicie o navegador. Em <code>chrome://gpu</code>, "WebGL2" deve aparecer como <i>Hardware accelerated</i>. Desde o Chrome 139 o navegador não oferece mais o 3D por software quando a aceleração está desligada.');
+    dica('<b>Atalho com <code>--disable-gpu</code>?</b> Confira as propriedades do atalho do navegador: esse parâmetro desliga o 3D.');
+    dica('<b>Alternativas:</b> outro navegador (Edge, Firefox) ou o celular. E você sempre pode jogar no mapa 2D, com a mesma pontuação.');
+  }
+  rel.push('UA: ' + ua, 'URL: ' + location.href, 'Data: ' + new Date().toISOString());
+  document.getElementById('relatorio').value = rel.join('\n');
+  document.getElementById('btnCopiar').addEventListener('click', () => {
+    const ta = document.getElementById('relatorio'); ta.select();
+    (navigator.clipboard ? navigator.clipboard.writeText(ta.value) : Promise.reject()).catch(() => document.execCommand('copy'));
+    document.getElementById('btnCopiar').textContent = '✅ Copiado';
+  });
+})();
+</script>
+</body>
+</html>

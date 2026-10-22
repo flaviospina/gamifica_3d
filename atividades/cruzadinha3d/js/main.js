@@ -67,29 +67,54 @@ class Jogo {
     this.audio = new Audio();
   }
 
-  /** Testa se o navegador consegue criar um contexto WebGL (sem o Three.js). */
-  static temWebGL() {
-    if (new URLSearchParams(location.search).has('semwebgl')) return false; // para testes
-    try {
-      const cv = document.createElement('canvas');
-      const gl = cv.getContext('webgl2') || cv.getContext('webgl') || cv.getContext('experimental-webgl');
-      if (!gl) return false;
-      gl.getExtension('WEBGL_lose_context')?.loseContext();
-      return true;
-    } catch { return false; }
+  /**
+   * Tenta criar o contexto WebGL 2 direto no canvas do jogo (o Three.js r163+ exige WebGL 2)
+   * e guarda o motivo que o navegador informa quando falha. O mesmo contexto é entregue
+   * ao WebGLRenderer, então não sobra nenhum contexto "de teste" pendurado.
+   */
+  static sondarWebGL(canvas, atributos) {
+    const diag = { webgl2: false, webgl1: false, motivo: '', gpu: '' };
+    Jogo.diagWebGL = diag;
+    if (new URLSearchParams(location.search).has('semwebgl')) { diag.motivo = 'modo 2D forçado pelo parâmetro ?semwebgl=1'; return { gl: null, diag }; }
+    const aoFalhar = (ev) => { if (ev.statusMessage) diag.motivo = ev.statusMessage; };
+    canvas.addEventListener('webglcontextcreationerror', aoFalhar);
+    let gl = null;
+    try { gl = canvas.getContext('webgl2', atributos); } catch (e) { diag.motivo = diag.motivo || e.message; }
+    canvas.removeEventListener('webglcontextcreationerror', aoFalhar);
+    if (gl) {
+      diag.webgl2 = true;
+      try { const info = gl.getExtension('WEBGL_debug_renderer_info'); if (info) diag.gpu = String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL)); } catch { /* ignora */ }
+      return { gl, diag };
+    }
+    // Só para o diagnóstico: existe ao menos WebGL 1?
+    try { const cv = document.createElement('canvas'); cv.addEventListener('webglcontextcreationerror', aoFalhar); diag.webgl1 = !!cv.getContext('webgl'); } catch { /* ignora */ }
+    if (!diag.motivo) diag.motivo = diag.webgl1 ? 'o navegador só oferece WebGL 1 (o jogo precisa de WebGL 2)' : 'o navegador não criou nenhum contexto WebGL';
+    return { gl: null, diag };
+  }
+
+  /** Limita a resolução interna: nunca mais que ~3,2 milhões de pixels (segura telas 4K/alto DPI). */
+  _razaoPixels() {
+    const dpr = Math.min(window.devicePixelRatio || 1, this.qualidade.pixelRatioMax);
+    const teto = Math.sqrt(3.2e6 / Math.max(1, window.innerWidth * window.innerHeight));
+    return Math.max(0.75, Math.min(dpr, teto));
   }
 
   async iniciar() {
-    if (!Jogo.temWebGL()) return this._iniciarSemWebGL();
     carregamento.progresso(45, 'Preparando a ilha…');
     const canvas = $('cena');
+    // 'high-performance' só na qualidade Alta: em notebooks com duas placas a troca de GPU
+    // é uma causa conhecida de perda de contexto; no modo padrão o navegador escolhe.
+    const atributos = { alpha: false, depth: true, stencil: false, antialias: this.qualidade.antialias, premultipliedAlpha: true, preserveDrawingBuffer: false, powerPreference: this.nivelQualidade === 'alta' ? 'high-performance' : 'default', failIfMajorPerformanceCaveat: false };
+    const { gl, diag } = Jogo.sondarWebGL(canvas, atributos);
+    if (!gl) { console.warn('[Ilha] WebGL indisponível, abrindo em modo 2D:', diag.motivo); return this._iniciarSemWebGL(diag.motivo); }
     try {
-      this.renderer = new THREE.WebGLRenderer({ canvas, antialias: this.qualidade.antialias, powerPreference: 'high-performance' });
+      this.renderer = new THREE.WebGLRenderer({ canvas, context: gl, antialias: this.qualidade.antialias });
     } catch (err) {
-      console.warn('[Ilha] WebGL indisponível, abrindo em modo 2D:', err?.message);
-      return this._iniciarSemWebGL();
+      console.warn('[Ilha] Falha ao iniciar o renderizador, abrindo em modo 2D:', err?.message);
+      return this._iniciarSemWebGL(err?.message || diag.motivo);
     }
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.qualidade.pixelRatioMax));
+    this._vigiarContexto(canvas);
+    this.renderer.setPixelRatio(this._razaoPixels());
     this.renderer.setSize(window.innerWidth, window.innerHeight, false);
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.12;
@@ -226,6 +251,7 @@ class Jogo {
     this._posProcessamento();
     this.renderer.compile(this.scene, this.cameraJogo.camera);
     carregamento.concluir();
+    this._tInicio = performance.now();
     this.renderer.setAnimationLoop(() => this._quadro());
     if (!prefs.ler('avatarConfirmado', false) && !this.estado.concluida) this._abrirAvatar();
   }
@@ -262,8 +288,9 @@ class Jogo {
    * Modo sem WebGL: a cruzadinha abre direto no mapa 2D, com a mesma lógica,
    * pontuação, progresso e envio ao servidor. Nada de 3D é criado.
    */
-  async _iniciarSemWebGL() {
+  async _iniciarSemWebGL(motivo = '') {
     this.semWebGL = true;
+    this.motivoSemWebGL = motivo;
     carregamento.progresso(60, 'Este navegador está sem 3D. Abrindo o mapa da cruzadinha…');
     this.layout = montarLayout(this.cruzadinha);
     this.estado = new EstadoCruzadinha(this.layout);
@@ -323,13 +350,78 @@ class Jogo {
     setInterval(() => { if (!document.hidden && !this.terminada) this.tempoJogo += 1; }, 1000);
     carregamento.concluir();
     this.mapa.abrir();
-    this._aviso('Seu navegador está sem suporte a 3D. Você joga a mesma cruzadinha no mapa, com a mesma pontuação. 🗺️', 7000);
+    this._aviso('Seu navegador está sem 3D agora. Você joga a mesma cruzadinha no mapa, com a mesma pontuação. 🗺️ Veja o motivo em Menu › Por que estou sem 3D?', 9000);
     if (this.estado.concluida) { this.terminada = true; }
+  }
+
+  /**
+   * Perda de contexto WebGL (placa de vídeo reiniciou, Chrome derrubou o processo de GPU…).
+   * O Three.js para de desenhar sozinho; aqui pausamos o jogo, avisamos, registramos o
+   * episódio (a próxima abertura usa uma qualidade mais leve) e, se o contexto voltar,
+   * refazemos o pós-processamento e seguimos. Se não voltar, oferecemos recarregar ou o 2D.
+   */
+  _vigiarContexto(canvas) {
+    canvas.addEventListener('webglcontextlost', (ev) => {
+      ev.preventDefault();
+      this.pausado = true;
+      this._salvarProgresso();
+      Jogo.registrarPerdaGpu(this.nivelQualidade);
+      this._aviso('Ops, a placa de vídeo reiniciou. Tentando recuperar o 3D… 🛠️', 6000);
+      clearTimeout(this._tContexto);
+      this._tContexto = setTimeout(() => { if (this.pausado) this._mostrarContextoPerdido(); }, 5000);
+    });
+    canvas.addEventListener('webglcontextrestored', () => {
+      clearTimeout(this._tContexto);
+      $('contextoPerdido').hidden = true;
+      if (this.composer) { this.composer.dispose?.(); this.composer = null; }
+      this._posProcessamento();
+      this.pausado = false;
+      this.ultimo = performance.now();
+      this._aviso('3D de volta! Continuando de onde parou. 👍', 3500);
+    });
+  }
+
+  _mostrarContextoPerdido() {
+    const caixa = $('contextoPerdido');
+    if (!caixa) return;
+    caixa.hidden = false;
+    const u = new URL(location.href);
+    $('btnContextoRecarregar').onclick = () => { this._salvarProgresso(); location.reload(); };
+    u.searchParams.set('semwebgl', '1');
+    $('btnContexto2d').href = u.toString();
+    $('btnContexto2d').onclick = () => this._salvarProgresso();
+  }
+
+  /** Guarda o episódio e baixa a qualidade salva um degrau (alta → média → baixa). */
+  static registrarPerdaGpu(nivelAtual) {
+    const lista = (prefs.ler('gpuPerdas', []) || []).filter((t) => Date.now() - t < 7 * 86400e3);
+    lista.push(Date.now());
+    prefs.gravar('gpuPerdas', lista.slice(-10));
+    const abaixo = { alta: 'media', media: 'baixa', baixa: 'baixa' }[nivelAtual] || 'baixa';
+    salvarQualidade(abaixo);
+  }
+
+  /**
+   * Se o jogo estiver muito lento no primeiro minuto (< 22 fps por 3 s seguidos),
+   * reduz a carga sem recarregar: resolução interna 1x, sem bloom/sombras.
+   * A próxima abertura já vem na qualidade de baixo.
+   */
+  _reduzirCargaAoVivo() {
+    if (this._cargaReduzida || this.nivelQualidade === 'baixa') return;
+    this._cargaReduzida = true;
+    this.renderer.setPixelRatio(1);
+    if (this.composer) { this.composer.dispose?.(); this.composer = null; }
+    if (this.mundo.sol) this.mundo.sol.castShadow = false;
+    this.renderer.shadowMap.enabled = false;
+    const abaixo = this.nivelQualidade === 'alta' ? 'media' : 'baixa';
+    salvarQualidade(abaixo);
+    $('selQualidade').value = abaixo;
+    this._aviso('Deixamos o visual mais leve para rodar melhor neste computador. Você pode mudar em Menu › Qualidade. ⚙️', 6000);
   }
 
   /** Brilho suave (bloom), vinheta e tom quente — só nas qualidades Média e Alta. */
   _posProcessamento() {
-    if (!this.qualidade.pos) return;
+    if (!this.qualidade.pos || this._cargaReduzida) return;
     const w = window.innerWidth, h = window.innerHeight;
     this.composer = new EffectComposer(this.renderer);
     this.composer.addPass(new RenderPass(this.scene, this.cameraJogo.camera));
@@ -356,6 +448,7 @@ class Jogo {
   }
 
   _redimensionar() {
+    this.renderer.setPixelRatio(this._cargaReduzida ? 1 : this._razaoPixels());
     this.renderer.setSize(window.innerWidth, window.innerHeight, false);
     this.cameraJogo.redimensionar(window.innerWidth, window.innerHeight);
     this.composer?.setSize(window.innerWidth, window.innerHeight);
@@ -558,6 +651,7 @@ class Jogo {
     $('btnMapa').addEventListener('click', () => { this._alternarMenu(false); this._abrirMapa(); });
     $('btnMenuMapa').addEventListener('click', () => { this._alternarMenu(false); this._abrirMapa(); });
     $('btnMenuAvatar').addEventListener('click', () => { this._alternarMenu(false); if (!this.semWebGL) this._abrirAvatar(); });
+    $('btnDiag3d').hidden = !this.semWebGL;
     if (this.semWebGL) { $('btnMenuAvatar').hidden = true; $('btnVoltarInicio').hidden = true; $('selQualidade').closest('label').hidden = true; $('chkToque').closest('label').hidden = true; $('btnMapa').hidden = true; }
     $('btnComoJogar').addEventListener('click', () => { $('ajuda').hidden = false; $('btnFecharAjuda').focus(); });
     $('btnFecharAjuda').addEventListener('click', () => this._fecharAjuda());
@@ -636,7 +730,12 @@ class Jogo {
     if (fps.tempo >= 0.5) {
       fps.valor = Math.round(fps.quadros / fps.tempo);
       fps.quadros = 0; fps.tempo = 0;
-      if (!$('hudFps').hidden) $('hudFps').textContent = `${fps.valor} fps · ${this.renderer.info.render.calls} draw calls · ${this.nivelQualidade}`;
+      if (!$('hudFps').hidden) $('hudFps').textContent = `${fps.valor} fps · ${this.renderer.info.render.calls} draw calls · ${this.nivelQualidade}${this._cargaReduzida ? ' (leve)' : ''}`;
+      // Guarda de desempenho: só no primeiro minuto, com a cena visível
+      if (!this._cargaReduzida && agora - this._tInicio < 60000 && !this.mapa.aberto && !this.telaAvatar.aberta && !document.hidden) {
+        this._lentos = fps.valor < 22 ? (this._lentos || 0) + 1 : 0;
+        if (this._lentos >= 6) this._reduzirCargaAoVivo();
+      }
     }
   }
 }
