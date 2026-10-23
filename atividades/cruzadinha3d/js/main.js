@@ -117,7 +117,7 @@ class Jogo {
     this.renderer.setPixelRatio(this._razaoPixels());
     this.renderer.setSize(window.innerWidth, window.innerHeight, false);
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.12;
+    this.renderer.toneMappingExposure = 1.05;
     this.renderer.info.autoReset = false; // contagem de draw calls somando todos os passes
     if (this.qualidade.sombras > 0) {
       this.renderer.shadowMap.enabled = true;
@@ -425,22 +425,26 @@ class Jogo {
     const w = window.innerWidth, h = window.innerHeight;
     this.composer = new EffectComposer(this.renderer);
     this.composer.addPass(new RenderPass(this.scene, this.cameraJogo.camera));
-    this.bloom = new UnrealBloomPass(new THREE.Vector2(w, h), 0.28, 0.6, 0.82);
+    this.bloom = new UnrealBloomPass(new THREE.Vector2(w, h), 0.32, 0.55, 0.95); // limiar alto: só lampiões, chamas e peças resolvidas brilham
     this.composer.addPass(this.bloom);
     this.grade = new ShaderPass({
-      uniforms: { tDiffuse: { value: null }, uForca: { value: 1 } },
+      uniforms: { tDiffuse: { value: null }, uForca: { value: 1 }, uTempo: { value: 0 } },
       vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-      fragmentShader: `uniform sampler2D tDiffuse; uniform float uForca; varying vec2 vUv;
+      fragmentShader: `uniform sampler2D tDiffuse; uniform float uForca; uniform float uTempo; varying vec2 vUv;
+        float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233)) + uTempo) * 43758.5453); }
         void main(){
           vec4 c = texture2D(tDiffuse, vUv);
-          // tom quente e leve saturação (estilo "fim de tarde")
-          vec3 quente = c.rgb * vec3(1.04, 1.0, 0.94);
+          // Tom quente, leve saturação e "lift" das sombras (filme de animação)
+          vec3 quente = c.rgb * vec3(1.05, 1.0, 0.93);
           float cinza = dot(quente, vec3(0.299, 0.587, 0.114));
-          vec3 sat = mix(vec3(cinza), quente, 1.06);
-          // vinheta suave nas bordas
+          vec3 sat = mix(vec3(cinza), quente, 1.08);
+          sat = mix(sat, vec3(0.08, 0.07, 0.12), 0.06 * (1.0 - cinza));
+          // Vinheta suave nas bordas (nunca escurece o centro da ação)
           float d = distance(vUv, vec2(0.5));
-          float vin = smoothstep(0.45, 0.95, d) * 0.28;
-          gl_FragColor = vec4(mix(c.rgb, sat * (1.0 - vin), uForca), c.a);
+          float vin = smoothstep(0.42, 0.98, d) * 0.34;
+          // Grão fino, quase imperceptível
+          float grao = (hash(gl_FragCoord.xy) - 0.5) * 0.025;
+          gl_FragColor = vec4(mix(c.rgb, sat * (1.0 - vin) + grao, uForca), c.a);
         }`,
     });
     this.composer.addPass(this.grade);
@@ -715,6 +719,7 @@ class Jogo {
 
     this.personagem.atualizar(dt, { eixo, pular: this.controles.pular }, this.mundo.colisao, bloqueado);
     this.mundo.atualizar(dt);
+    if (this.grade) this.grade.uniforms.uTempo.value = this.mundo.tempo;
     this.animais.atualizar(dt, this.mundo.tempo, this.personagem.posicao);
     this.blocos.atualizar(dt);
     this.particulas.atualizar(dt);

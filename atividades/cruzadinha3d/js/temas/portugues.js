@@ -11,7 +11,7 @@ export default {
   nome: 'Ilha-Biblioteca',
   disciplina: 'Português',
   ceu:   { topo: '#E8A95B', horizonte: '#FFF1D6' },
-  nevoa: { cor: '#FFF1D6', perto: 28, longe: 75 },
+  nevoa: { cor: '#FFF1D6', perto: 30, longe: 140 },
   luz: { ...ciencias.luz, sol: '#FFE2B8', ceu: '#FFE9C9', chao: '#8C7A4A' },
   cores: {
     ...ciencias.cores,

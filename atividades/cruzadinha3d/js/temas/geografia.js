@@ -12,7 +12,7 @@ export default {
   nome: 'Ilha dos Mapas',
   disciplina: 'Geografia',
   ceu:   { topo: '#3F86C9', horizonte: '#E3EEF7' },
-  nevoa: { cor: '#E3EEF7', perto: 28, longe: 75 },
+  nevoa: { cor: '#E3EEF7', perto: 30, longe: 140 },
   cores: {
     ...ciencias.cores,
     grama: '#8CBF5A', gramaEscura: '#6FA544', areia: '#E7D3A3', agua: '#2F8FD0',

@@ -6,15 +6,15 @@
 //  e a função decorar(ctx) que espalha objetos e registra colisores.
 // ============================================================
 import * as THREE from 'three';
-import { criarVegetacao, materialSuave, materialBrilho, caixa, caixaArredondada } from './pecas.js';
+import { criarVegetacao, materialSuave, materialBrilho, caixa, caixaArredondada, fundirEstaticos } from './pecas.js';
 
 export default {
   chave: 'ciencias',
   nome: 'Ilha da Ciência',
   disciplina: 'Ciências',
 
-  ceu:   { topo: '#3F8FE0', horizonte: '#FFE7C9' },
-  nevoa: { cor: '#F6E4CC', perto: 30, longe: 90 },
+  ceu:   { topo: '#2F7BD6', horizonte: '#F7CFA2', sol: '#FFF0C4', montanha: '#8A93B8' },
+  nevoa: { cor: '#F3DFC6', perto: 30, longe: 150 }, // longe o bastante para as montanhas aparecerem como silhuetas
   luz: {
     sol: '#FFD9A3', intensidadeSol: 3.4,            // fim de tarde dourado
     ceu: '#CFE3FF', chao: '#7FA64A', intensidadeAmbiente: 1.0,
@@ -130,11 +130,13 @@ export default {
     antena.position.set(1.2, 4.0, -0.6);
     g.add(antena);
     g.userData.antena = antena;
+    antena.userData.animado = true;
     // Tanque de amostras ao lado
     const tanque = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 1.1, 24), materialBrilho('#3DA3D8', { transparent: true, opacity: 0.8 }));
     tanque.position.set(-2.4, 0.55, 0.6); g.add(tanque);
     const tampa = new THREE.Mesh(new THREE.CylinderGeometry(0.54, 0.54, 0.1, 24), materialSuave('#286456')); tampa.position.set(-2.4, 1.12, 0.6); g.add(tampa);
     g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+    fundirEstaticos(g);
     return g;
   },
 };

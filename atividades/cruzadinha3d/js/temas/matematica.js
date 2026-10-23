@@ -11,7 +11,7 @@ export default {
   nome: 'Ilha Geométrica',
   disciplina: 'Matemática',
   ceu:   { topo: '#5B6EE0', horizonte: '#E2E9FF' },
-  nevoa: { cor: '#E2E9FF', perto: 28, longe: 75 },
+  nevoa: { cor: '#E2E9FF', perto: 30, longe: 140 },
   cores: {
     ...ciencias.cores,
     grama: '#7CC7B5', gramaEscura: '#5FAE9C', areia: '#EDE3C3', agua: '#4E86E6',

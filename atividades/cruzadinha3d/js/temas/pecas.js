@@ -91,8 +91,7 @@ export function geometrias() {
     [0, 0.55, 0, 0.95], [0, 1.2, 0, 0.72], [0, 1.75, 0, 0.5], [0, 2.15, 0, 0.3],
   ]);
   geo.arbusto = aglomerado([[0, 0.32, 0, 0.42], [0.3, 0.26, 0.1, 0.3], [-0.28, 0.24, -0.1, 0.3], [0.05, 0.3, -0.3, 0.26]]);
-  geo.pedra = new THREE.IcosahedronGeometry(0.5, 1);
-  geo.pedra.translate(0, 0.28, 0);
+  geo.pedra = pedraFacetada(3, 0.5, 1); // rocha facetada (silhueta autoral)
   geo.flor = aglomerado([[0, 0.34, 0, 0.09], [0.09, 0.34, 0, 0.07], [-0.09, 0.34, 0, 0.07], [0, 0.34, 0.09, 0.07], [0, 0.34, -0.09, 0.07]], 6);
   geo.caule = new THREE.CylinderGeometry(0.018, 0.022, 0.32, 6);
   geo.caule.translate(0, 0.16, 0);
@@ -102,7 +101,31 @@ export function geometrias() {
   geo.cogumeloChapeu = new THREE.SphereGeometry(0.16, 10, 7, 0, Math.PI * 2, 0, Math.PI / 2); geo.cogumeloChapeu.translate(0, 0.2, 0);
   geo.pedraCaminho = new THREE.CylinderGeometry(0.42, 0.46, 0.06, 9); geo.pedraCaminho.translate(0, 0.03, 0);
   geo.montinho = new THREE.SphereGeometry(1, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2);
-  geo.nuvem = aglomerado([[0, 0, 0, 1], [0.9, -0.1, 0.1, 0.75], [-0.9, -0.15, 0, 0.7], [0.3, 0.35, -0.2, 0.65], [-0.3, 0.3, 0.25, 0.6]], 9);
+  // Palmeira: tronco inclinado em segmentos + folhas (elipsoides achatados em leque)
+  const seg = [];
+  for (let i = 0; i < 5; i++) {
+    const c = new THREE.CylinderGeometry(0.1 - i * 0.012, 0.13 - i * 0.012, 0.75, 8);
+    c.translate(0, 0.37, 0).rotateZ(-0.09 * (i + 1)).translate(i * 0.085, i * 0.7, 0);
+    seg.push(c);
+  }
+  geo.troncoPalmeira = mergeGeometries(seg, false); seg.forEach(s => s.dispose());
+  const folhas = [];
+  for (let i = 0; i < 7; i++) {
+    const f = new THREE.SphereGeometry(0.62, 8, 5);
+    f.scale(1, 0.09, 0.3).translate(0.62, 0, 0).rotateZ(-0.55 + (i % 2) * 0.25).rotateY(i * Math.PI * 2 / 7);
+    folhas.push(f);
+  }
+  geo.folhasPalmeira = mergeGeometries(folhas, false); folhas.forEach(f => f.dispose());
+  geo.folhasPalmeira.translate(0, 3.55, 0);
+  geo.folhasPalmeira.translate(0.36, 0, 0);
+  // Lampião de jardim: poste de madeira com braço e caixa de vidro
+  const poste = new THREE.CylinderGeometry(0.05, 0.07, 1.6, 8); poste.translate(0, 0.8, 0);
+  const braco = new THREE.BoxGeometry(0.34, 0.05, 0.05); braco.translate(0.14, 1.58, 0);
+  const tampa = new THREE.ConeGeometry(0.14, 0.12, 6); tampa.translate(0.28, 1.5, 0);
+  geo.lampiaoPoste = mergeGeometries([poste, braco, tampa], false);
+  geo.lampiaoVidro = new THREE.CylinderGeometry(0.085, 0.07, 0.2, 6); geo.lampiaoVidro.translate(0.28, 1.34, 0);
+  geo.lampiaoChama = new THREE.SphereGeometry(0.045, 8, 6); geo.lampiaoChama.translate(0.28, 1.34, 0);
+  geo.nuvem = aglomerado([[0, 0, 0, 1], [0.9, -0.1, 0.1, 0.75], [-0.9, -0.15, 0, 0.7], [0.3, 0.35, -0.2, 0.65], [-0.3, 0.3, 0.25, 0.6], [1.6, -0.2, -0.1, 0.5], [-1.5, -0.25, 0.15, 0.45]], 14);
   geo.pronto = true;
   return geo;
 }
@@ -122,7 +145,7 @@ export function criarVegetacao(cores) {
     pedra:        new Instanciador(g.pedra, materialSuave('#FFFFFF', { roughness: 0.8, map: Texturas.pedraMusgo() })),
     flor:         new Instanciador(g.flor, materialSuave('#ffffff', { roughness: 0.5 }), { sombra: false }),
     caule:        new Instanciador(g.caule, materialSuave(cores.copaEscura), { sombra: false }),
-    mancha:       new Instanciador(g.manchaGrama, materialSuave(cores.gramaEscura), { sombra: false, recebeSombra: true }),
+    mancha:       new Instanciador(g.manchaGrama, materialSuave(cores.gramaEscura, { transparent: true, opacity: 0.55, depthWrite: false }), { sombra: false, recebeSombra: true }),
     cogumeloPe:   new Instanciador(g.cogumeloPe, materialSuave('#F6EFE2', { roughness: 0.8 })),
     cogumeloChapeu: new Instanciador(g.cogumeloChapeu, materialSuave('#E0533B', { roughness: 0.55 })),
     pedraCaminho: new Instanciador(g.pedraCaminho, materialSuave('#FFFFFF', { roughness: 0.9, map: Texturas.pedra('#D8CDB4', 13) }), { sombra: false }),
@@ -135,6 +158,7 @@ export function criarVegetacao(cores) {
       const esc = rnd.entre(0.85, 1.35);
       const rot = rnd() * Math.PI * 2;
       inst.tronco.adicionar(new THREE.Vector3(x, 0, z), { rotacaoY: rot, escala: [esc, esc * 1.15, esc] });
+      inst.mancha.adicionar(new THREE.Vector3(x, 0.006, z), { rotacaoY: rot, escala: 1.1 * esc });
       if (tipo === 'pinheiro') {
         inst.copaPinheiro.adicionar(new THREE.Vector3(x, 0.45 * esc, z), { rotacaoY: rot, escala: esc });
         return { raio: 0.85 * esc, altura: 3 * esc };
@@ -185,15 +209,16 @@ export function criarVegetacao(cores) {
 /** Nuvens fofas que flutuam devagar. */
 export function criarNuvens(scene, rnd, quantidade, raio) {
   const g = geometrias();
-  const mat = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 1, transparent: true, opacity: 0.95 });
+  // Nuvens altas e distantes (nunca "na cara" da câmera), suavizadas pela névoa
+  const mat = new THREE.MeshStandardMaterial({ color: '#ffffff', emissive: '#FFF4E6', emissiveIntensity: 0.25, roughness: 1, transparent: true, opacity: 0.92 });
   const grupo = new THREE.Group();
   for (let i = 0; i < quantidade; i++) {
     const nuvem = new THREE.Mesh(g.nuvem, mat);
     const ang = rnd() * Math.PI * 2;
-    const d = rnd.entre(raio * 0.6, raio * 1.3);
-    nuvem.position.set(Math.cos(ang) * d, rnd.entre(9, 14), Math.sin(ang) * d);
-    const s = rnd.entre(1.3, 2.4);
-    nuvem.scale.set(s, s * 0.6, s * 0.8);
+    const d = rnd.entre(raio * 1.3, raio * 3.2);
+    nuvem.position.set(Math.cos(ang) * d, rnd.entre(17, 28), Math.sin(ang) * d);
+    const s = rnd.entre(3.2, 6);
+    nuvem.scale.set(s, s * 0.5, s * 0.8);
     nuvem.rotation.y = rnd() * 6.28;
     nuvem.userData.vel = rnd.entre(0.15, 0.4);
     grupo.add(nuvem);
@@ -204,7 +229,7 @@ export function criarNuvens(scene, rnd, quantidade, raio) {
     atualizar(dt) {
       for (const n of grupo.children) {
         n.position.x += n.userData.vel * dt;
-        if (n.position.x > raio * 1.6) n.position.x = -raio * 1.6;
+        if (n.position.x > raio * 3.4) n.position.x = -raio * 3.4;
       }
     },
   };
@@ -225,6 +250,67 @@ export function fundirMalhas(malhas, material) {
   const g = mergeGeometries(geos, false);
   geos.forEach(x => x.dispose());
   return new THREE.Mesh(g, material);
+}
+
+/**
+ * Rocha facetada: icosaedro com vértices deslocados e normais planas
+ * (silhueta autoral, em vez de "bolinha"). Determinística pelo seed.
+ */
+export function pedraFacetada(seed = 1, raio = 0.5, detalhe = 1) {
+  let g = new THREE.IcosahedronGeometry(raio, detalhe).toNonIndexed();
+  const pos = g.attributes.position;
+  let h = seed * 9301 + 49297;
+  const rnd = () => { h = (h * 1103515245 + 12345) % 2147483648; return h / 2147483648; };
+  // Mesmo deslocamento para vértices coincidentes (sem rasgar a malha)
+  const chave = new Map();
+  const v = new THREE.Vector3();
+  for (let i = 0; i < pos.count; i++) {
+    v.fromBufferAttribute(pos, i);
+    const k = v.toArray().map(n => n.toFixed(3)).join(',');
+    if (!chave.has(k)) chave.set(k, 0.72 + rnd() * 0.56);
+    v.multiplyScalar(chave.get(k));
+    v.y *= 0.8;
+    pos.setXYZ(i, v.x, v.y, v.z);
+  }
+  g.computeVertexNormals();
+  g.translate(0, raio * 0.55, 0);
+  return g;
+}
+
+/**
+ * Funde as malhas estáticas de um grupo por material (menos draw calls).
+ * Malhas listadas em `manter` (ou com userData.animado) ficam como estão.
+ */
+export function fundirEstaticos(grupo, manter = []) {
+  const porMaterial = new Map();
+  const remover = [];
+  grupo.updateMatrixWorld(true);
+  grupo.traverse((o) => {
+    if (!o.isMesh || o.isInstancedMesh || manter.includes(o) || o.userData.animado) return;
+    let p = o.parent, animado = false;
+    while (p && p !== grupo) { if (manter.includes(p) || p.userData.animado) animado = true; p = p.parent; }
+    if (animado) return;
+    const lista = porMaterial.get(o.material) || [];
+    let g = o.geometry.clone();
+    for (const k of Object.keys(g.attributes)) if (!['position', 'normal', 'uv'].includes(k)) g.deleteAttribute(k);
+    if (!g.attributes.uv) g.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2));
+    if (g.index) g = g.toNonIndexed();
+    // Leva para o espaço do grupo
+    const rel = new THREE.Matrix4().copy(grupo.matrixWorld).invert().multiply(o.matrixWorld);
+    lista.push(g.applyMatrix4(rel));
+    porMaterial.set(o.material, lista);
+    remover.push(o);
+  });
+  for (const o of remover) o.parent.remove(o);
+  for (const [mat, geos] of porMaterial) {
+    const todos = geos.map(g => g.index ? g.toNonIndexed() : g);
+    const g = mergeGeometries(todos, false);
+    todos.forEach(x => x.dispose());
+    const m = new THREE.Mesh(g, mat);
+    m.castShadow = true; m.receiveShadow = true;
+    grupo.add(m);
+  }
+  return grupo;
 }
 
 /** Caixa arredondada pronta (para construções). Pivô na base. */

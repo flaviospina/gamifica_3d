@@ -46,6 +46,7 @@ function textura(cv, repeticoes = 1) {
 }
 const hex = (c) => { const k = new THREE.Color(c); return [k.r * 255, k.g * 255, k.b * 255]; };
 const mix = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
+const smoothstep = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 
 /** Pinta um canvas a partir de uma função (x, y, ruído) → [r, g, b, a]. */
 function pintar(tam, seed, fn) {
@@ -76,12 +77,12 @@ export const Texturas = {
     return cache[k] = textura(cv, 1);
   },
   /** Pedra cinza com musgo embaixo (pilares, rochas). */
-  pedraMusgo(seed = 21) {
-    const k = 'musgo' + seed; if (cache[k]) return cache[k];
-    const pedra = [150, 150, 152], escura = [92, 92, 96], musgo = [86, 140, 60];
+  pedraMusgo(seed = 21, forcaMusgo = 1) {
+    const k = 'musgo' + seed + forcaMusgo; if (cache[k]) return cache[k];
+    const pedra = [158, 156, 150], escura = [96, 94, 92], musgo = [86, 140, 60];
     const cv = pintar(256, seed, (x, y, n, n2) => {
       let c = mix(pedra, escura, Math.pow(n, 1.6));
-      const m = Math.max(0, (1 - y) * 1.2 - 0.3) * (n2 > 0.45 ? 1 : 0) * Math.min(1, n2 * 1.3); // musgo na base (uv.y baixo)
+      const m = Math.max(0, (1 - y) * 1.2 - 0.3) * (n2 > 0.45 ? 1 : 0) * Math.min(1, n2 * 1.3) * forcaMusgo; // musgo na base (uv.y baixo)
       c = mix(c, musgo, Math.min(1, m));
       return [...c, 255];
     });
@@ -129,6 +130,50 @@ export const Texturas = {
     const base = hex(cor), escuro = mix(base, [120, 100, 60], 0.3);
     const cv = pintar(128, seed, (x, y, n, n2) => [...mix(base, escuro, n * 0.5 + (n2 - 0.5) * 0.25), 255]);
     return cache[k] = textura(cv, 20);
+  },
+  /** Casa da cruzadinha: pedra clara com friso escuro nas bordas (lê como peça talhada). */
+  ladrilho(cor = '#F2EADA', seed = 15) {
+    const k = 'ladrilho' + cor + seed; if (cache[k]) return cache[k];
+    const base = hex(cor), escuro = mix(base, [110, 95, 75], 0.5), friso = mix(base, [70, 60, 45], 0.75);
+    const cv = pintar(128, seed, (x, y, n, n2) => {
+      const veio = Math.pow(Math.abs(Math.sin((n * 5 + x * 2) * Math.PI)), 10) * 0.25;
+      let c = mix(base, escuro, Math.min(1, veio + (n2 - 0.5) * 0.14));
+      const borda = Math.min(x, 1 - x, y, 1 - y);            // distância à borda do quadrado
+      c = mix(c, friso, 1 - smoothstep(0.03, 0.075, borda)); // friso escuro
+      c = mix(c, [255, 255, 255], smoothstep(0.075, 0.12, borda) * (1 - smoothstep(0.12, 0.17, borda)) * 0.18); // chanfro claro
+      return [...c, 255];
+    });
+    const t = textura(cv, 1); t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
+    return cache[k] = t;
+  },
+  /** Madeira: veios compridos e nós (postes, placas, lampiões). */
+  madeira(cor = '#8B5E34', seed = 81) {
+    const k = 'madeira' + cor + seed; if (cache[k]) return cache[k];
+    const base = hex(cor), escuro = mix(base, [40, 24, 10], 0.6), claro = mix(base, [220, 180, 130], 0.35);
+    const cv = pintar(128, seed, (x, y, n, n2) => {
+      const veio = Math.pow(Math.abs(Math.sin((y * 9 + n * 4 + x * 0.6) * Math.PI)), 2.5);
+      let c = mix(claro, base, n * 0.6 + 0.2);
+      c = mix(c, escuro, veio * 0.55 + Math.pow(n2, 5) * 0.5);
+      return [...c, 255];
+    });
+    return cache[k] = textura(cv, 1);
+  },
+  /** Ruído cinza em dados lineares (para perturbar a água). */
+  ruido(seed = 91) {
+    const k = 'ruido' + seed; if (cache[k]) return cache[k];
+    const cv = pintar(128, seed, (x, y, n, n2) => { const v = 255 * (0.5 + 0.5 * Math.sin((n * 7 + n2 * 5) * Math.PI)); return [v, 255 * n2, 128, 255]; });
+    const t = textura(cv, 1); t.colorSpace = THREE.NoColorSpace;
+    return cache[k] = t;
+  },
+  /** Disco de sombra de contato (gradiente radial com alfa). */
+  sombraContato() {
+    const k = 'sombraContato'; if (cache[k]) return cache[k];
+    const tam = 64, cv = canvas(tam), ctx = cv.getContext('2d');
+    const g = ctx.createRadialGradient(32, 32, 4, 32, 32, 32);
+    g.addColorStop(0, 'rgba(20,30,15,0.55)'); g.addColorStop(0.6, 'rgba(20,30,15,0.25)'); g.addColorStop(1, 'rgba(20,30,15,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, tam, tam);
+    const t = new THREE.CanvasTexture(cv);
+    return cache[k] = t;
   },
   /** Tufo de grama (recorte com alfa): várias lâminas em leque. */
   tufo(seed = 71) {

@@ -6,6 +6,7 @@
 // ============================================================
 import * as THREE from 'three';
 import { materialSuave } from './temas/pecas.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { Texturas } from './texturas.js';
 
 const ALTURA_PILAR = 2.3;
@@ -40,20 +41,22 @@ export class Progressao {
     let i = 0;
     tamanhos.forEach((tam, z) => { for (let k = 0; k < tam; k++) this.zonaDaPalavra.set(ordenadas[i++].indice, z); });
 
-    const geoPilar = new THREE.CylinderGeometry(0.5, 0.62, ALTURA_PILAR, 14);
-    geoPilar.translate(0, ALTURA_PILAR / 2, 0);
-    const geoAnel = new THREE.TorusGeometry(0.62, 0.08, 8, 20);
-    const matPedra = materialSuave('#FFFFFF', { roughness: 0.9, map: Texturas.pedraMusgo(25) });
-    const matAnel = materialSuave('#7D8086', { roughness: 0.6 });
+    // Coluna talhada: fuste com leve afunilamento, capitel e anel — uma malha só
+    const fuste = new THREE.CylinderGeometry(0.46, 0.6, ALTURA_PILAR - 0.3, 14);
+    fuste.translate(0, (ALTURA_PILAR - 0.3) / 2, 0);
+    const capitel = new THREE.CylinderGeometry(0.6, 0.48, 0.3, 14);
+    capitel.translate(0, ALTURA_PILAR - 0.15, 0);
+    const anel = new THREE.TorusGeometry(0.6, 0.07, 8, 20);
+    anel.rotateX(Math.PI / 2); anel.translate(0, ALTURA_PILAR - 0.32, 0);
+    const geoPilar = mergeGeometries([fuste.toNonIndexed(), capitel.toNonIndexed(), anel.toNonIndexed()], false);
+    const matPedra = materialSuave('#FFFFFF', { roughness: 0.9, map: Texturas.pedra('#C9BC9C', 25) }); // arenito, igual à laje
 
     for (const totem of mundo.totens) {
       const z = this.zonaDaPalavra.get(totem.dados.palavra) ?? 0;
       totem.zona = z;
       if (z === 0) continue;
       const pilar = new THREE.Group();
-      const corpo = new THREE.Mesh(geoPilar, matPedra);
-      const anel = new THREE.Mesh(geoAnel, matAnel); anel.rotation.x = Math.PI / 2; anel.position.y = ALTURA_PILAR - 0.1;
-      pilar.add(corpo, anel);
+      pilar.add(new THREE.Mesh(geoPilar, matPedra));
       pilar.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
       const { x, z: pz } = totem.grupo.position;
       pilar.position.set(x, 0, pz);
