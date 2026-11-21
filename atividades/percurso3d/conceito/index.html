@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cidade do Saber · conceito visual</title>
+<!--
+  Cena-conceito do jogo de percurso "Cidade do Saber" (Gamifica).
+  Só para gerar as imagens-modelo em 4K; não é o jogo.
+  Parâmetros: ?vista=aerea|viaduto|largada|cidade  ?hud=1  ?three=<url base do three>
+-->
+<style>
+  :root { --navy: #161F38; --papel: #FBF7EF; --verde: #286456; --dourado: #E0A537; }
+  html, body { margin: 0; height: 100%; background: #0B1430; overflow: hidden; font-family: Inter, system-ui, sans-serif; color: var(--navy); }
+  canvas { display: block; width: 100vw; height: 100vh; }
+  /* HUD de demonstração (tamanhos em vw para escalar no 4K) */
+  .hud { position: fixed; z-index: 5; }
+  .cartao { background: linear-gradient(180deg, #FFFDF8, #F6EEDD); border: 0.08vw solid rgba(224,165,55,.6); border-radius: 1.1vw; box-shadow: 0 0.6vw 1.8vw rgba(0,0,0,.35); padding: 1vw 1.3vw; }
+  #hudTopo { left: 1.6vw; top: 1.6vw; display: flex; gap: 1vw; align-items: stretch; }
+  #hudTopo .titulo { font-family: Fraunces, Georgia, serif; font-weight: 700; font-size: 1.5vw; line-height: 1.1; }
+  #hudTopo .sub { font-size: 0.85vw; opacity: .75; margin-top: .2vw; }
+  #hudTopo .rodada { font-size: 0.95vw; font-weight: 700; color: var(--verde); margin-top: .6vw; }
+  #jogadores { right: 1.6vw; top: 1.6vw; display: flex; flex-direction: column; gap: .5vw; }
+  .jogador { display: flex; align-items: center; gap: .7vw; background: rgba(251,247,239,.94); border-radius: 999px; padding: .45vw .9vw .45vw .5vw; box-shadow: 0 .3vw .9vw rgba(0,0,0,.3); font-size: .95vw; min-width: 13vw; }
+  .jogador .cor { width: 1.6vw; height: 1.6vw; border-radius: 50%; border: .15vw solid #fff; box-shadow: 0 0 0 .1vw rgba(0,0,0,.15); }
+  .jogador .nome { font-weight: 700; flex: 1; }
+  .jogador .info { font-size: .8vw; opacity: .8; }
+  .jogador.vez { outline: .18vw solid var(--dourado); }
+  #pergunta { left: 50%; bottom: 7.5vw; transform: translateX(-50%); width: 38vw; }
+  #pergunta .tipo { font-size: .85vw; font-weight: 700; color: var(--verde); letter-spacing: .05em; text-transform: uppercase; }
+  #pergunta .texto { font-family: Fraunces, Georgia, serif; font-size: 1.5vw; margin: .4vw 0 .9vw; line-height: 1.25; }
+  #pergunta .opcoes { display: grid; grid-template-columns: 1fr 1fr; gap: .5vw; }
+  #pergunta .opcao { border: .1vw solid var(--navy); border-radius: .7vw; padding: .6vw .8vw; font-size: 1vw; background: #fff; }
+  #pergunta .opcao b { display: inline-block; width: 1.5vw; height: 1.5vw; border-radius: 50%; background: var(--navy); color: var(--papel); text-align: center; line-height: 1.5vw; margin-right: .5vw; font-size: .85vw; }
+  #pergunta .rodape { margin-top: .8vw; font-size: .85vw; opacity: .8; }
+  #dados { left: 50%; bottom: 1.6vw; transform: translateX(-50%); background: var(--navy); color: var(--papel); border-radius: 999px; padding: .9vw 2.2vw; font-size: 1.2vw; font-weight: 700; box-shadow: 0 .5vw 1.4vw rgba(0,0,0,.4); }
+  #sorte { left: 1.6vw; bottom: 1.6vw; background: var(--verde); color: var(--papel); border-radius: 1vw; padding: .9vw 1.2vw; font-size: 1vw; max-width: 22vw; box-shadow: 0 .5vw 1.4vw rgba(0,0,0,.4); }
+  #sorte b { display: block; font-size: .8vw; letter-spacing: .05em; opacity: .85; margin-bottom: .2vw; }
+  #mapa { right: 1.6vw; bottom: 1.6vw; width: 11vw; height: 11vw; border-radius: 1vw; background: rgba(22,31,56,.85); box-shadow: 0 .5vw 1.4vw rgba(0,0,0,.4); display: flex; align-items: center; justify-content: center; color: var(--papel); font-size: .9vw; }
+  body:not(.com-hud) .hud { display: none !important; }
+</style>
+<script type="importmap" id="importmap"></script>
+<script>
+  // Permite trocar a origem do three.js (teste local) via ?three=
+  const base = new URLSearchParams(location.search).get('three') || 'https://cdn.jsdelivr.net/npm/three@0.186.1';
+  document.getElementById('importmap').textContent = JSON.stringify({ imports: { three: base + '/build/three.module.js', 'three/addons/': base + '/examples/jsm/' } });
+</script>
+</head>
+<body>
+<canvas id="cena"></canvas>
+
+<div id="hudTopo" class="hud">
+  <div class="cartao">
+    <div class="titulo">Cidade do Saber</div>
+    <div class="sub">Ciências · 5º ano · Volta 1 de 2</div>
+    <div class="rodada">Rodada 4 · vez de Ana</div>
+  </div>
+</div>
+<div id="jogadores" class="hud">
+  <div class="jogador vez"><span class="cor" style="background:#E0A537"></span><span class="nome">Ana</span><span class="info">casa 12 · ⭐ 4</span></div>
+  <div class="jogador"><span class="cor" style="background:#3E7CB1"></span><span class="nome">Bruno</span><span class="info">casa 10 · ⭐ 3</span></div>
+  <div class="jogador"><span class="cor" style="background:#D9433B"></span><span class="nome">Carla</span><span class="info">casa 9 · ⭐ 5</span></div>
+  <div class="jogador"><span class="cor" style="background:#58A55C"></span><span class="nome">Davi</span><span class="info">casa 9 · ⭐ 2</span></div>
+  <div class="jogador"><span class="cor" style="background:#9B59B6"></span><span class="nome">Computador</span><span class="info">casa 7 · ⭐ 3</span></div>
+</div>
+<div id="pergunta" class="hud cartao">
+  <div class="tipo">Casa 12 · Pergunta de Ciências</div>
+  <div class="texto">Qual gás as plantas absorvem do ar para fazer a fotossíntese?</div>
+  <div class="opcoes">
+    <div class="opcao"><b>A</b>Oxigênio</div>
+    <div class="opcao"><b>B</b>Gás carbônico</div>
+    <div class="opcao"><b>C</b>Nitrogênio</div>
+    <div class="opcao"><b>D</b>Hidrogênio</div>
+  </div>
+  <div class="rodape">Acertou: avança <b>+2 casas</b> e ganha uma estrela. Errou: continua no lugar e recebe uma dica para a próxima. Ninguém volta.</div>
+</div>
+<div id="dados" class="hud">🎲 Jogar os dados</div>
+<div id="sorte" class="hud"><b>CARTA SORTE</b>Obras na avenida! Todos que estão na Zona Azul avançam 1 casa. 🏗️</div>
+<div id="mapa" class="hud">mapa da volta</div>
+
+<script type="module" src="conceito.js"></script>
+</body>
+</html>
