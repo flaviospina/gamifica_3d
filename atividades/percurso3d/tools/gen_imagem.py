@@ -58,6 +58,11 @@ def main():
             if e.code in (429, 500, 503) and tent < a.tentativas:
                 print(f'tentativa {tent}: HTTP {e.code}, aguardando…', file=sys.stderr); time.sleep(8 * tent); continue
             sys.exit(f'HTTP {e.code}: {msg}')
+        except (urllib.error.URLError, ConnectionError, TimeoutError, OSError) as e:
+            # Conexão cortada no meio (proxy ou rede): tenta de novo
+            if tent < a.tentativas:
+                print(f'tentativa {tent}: conexão interrompida ({e.__class__.__name__}), aguardando…', file=sys.stderr); time.sleep(10 * tent); continue
+            sys.exit(f'Conexão interrompida: {e}')
     cands = resp.get('candidates') or []
     for parte in (cands[0].get('content', {}).get('parts', []) if cands else []):
         dados = parte.get('inlineData')
