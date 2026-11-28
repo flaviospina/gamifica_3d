@@ -1,0 +1,48 @@
+// ============================================================
+//  data/perguntas_demo.js — Banco de demonstração (Ciências, 5º ano)
+//  Formato: { p: pergunta, a: [4 alternativas], c: índice da certa, e: explicação, t: assunto }
+// ============================================================
+export default {
+  titulo: 'Seres vivos, ar, água e energia',
+  disciplina: 'Ciências',
+  ano: '5º ano',
+  tema: 'ciencias',
+  voltas: 1,
+  perguntas: [
+    { p: 'Qual gás as plantas absorvem do ar para fazer a fotossíntese?', a: ['Oxigênio', 'Gás carbônico', 'Nitrogênio', 'Hidrogênio'], c: 1, e: 'As plantas usam gás carbônico, água e luz para produzir açúcar e liberar oxigênio.', t: 'Plantas' },
+    { p: 'Qual parte da planta absorve água e sais do solo?', a: ['Folha', 'Flor', 'Raiz', 'Fruto'], c: 2, e: 'A raiz fixa a planta e absorve água e nutrientes do solo.', t: 'Plantas' },
+    { p: 'Onde acontece a fotossíntese na maioria das plantas?', a: ['Nas folhas', 'Nas raízes', 'No caule', 'Nas sementes'], c: 0, e: 'As folhas têm clorofila, o pigmento verde que capta a luz do Sol.', t: 'Plantas' },
+    { p: 'Qual é a principal fonte de energia para a vida na Terra?', a: ['O vento', 'O Sol', 'O petróleo', 'A Lua'], c: 1, e: 'Quase toda a energia dos seres vivos vem, direta ou indiretamente, da luz do Sol.', t: 'Energia' },
+    { p: 'Animais que comem só plantas são chamados de:', a: ['Carnívoros', 'Onívoros', 'Herbívoros', 'Decompositores'], c: 2, e: 'Herbívoros se alimentam de vegetais; carnívoros, de outros animais; onívoros, dos dois.', t: 'Animais' },
+    { p: 'Qual destes é um ser vivo decompositor?', a: ['Leão', 'Fungo', 'Samambaia', 'Tartaruga'], c: 1, e: 'Fungos e bactérias decompõem restos de seres vivos e devolvem nutrientes ao solo.', t: 'Cadeia alimentar' },
+    { p: 'A água passa do estado líquido para o gasoso quando:', a: ['Congela', 'Evapora', 'Derrete', 'Condensa'], c: 1, e: 'Evaporação é a passagem de líquido para vapor, como na água que seca no varal.', t: 'Água' },
+    { p: 'As nuvens se formam quando o vapor de água:', a: ['Evapora', 'Derrete', 'Condensa', 'Ferve'], c: 2, e: 'Lá no alto o vapor esfria e condensa em gotinhas, que formam as nuvens.', t: 'Água' },
+    { p: 'Qual é o maior órgão do corpo humano?', a: ['O coração', 'O pulmão', 'A pele', 'O fígado'], c: 2, e: 'A pele cobre todo o corpo e protege contra micróbios, calor e frio.', t: 'Corpo humano' },
+    { p: 'O coração faz parte de qual sistema do corpo?', a: ['Digestório', 'Respiratório', 'Circulatório', 'Nervoso'], c: 2, e: 'O coração bombeia o sangue pelos vasos: é o sistema circulatório.', t: 'Corpo humano' },
+    { p: 'Pelo nariz e pelos pulmões, o ar entra no sistema:', a: ['Respiratório', 'Digestório', 'Circulatório', 'Muscular'], c: 0, e: 'O sistema respiratório leva oxigênio para o sangue e retira gás carbônico.', t: 'Corpo humano' },
+    { p: 'Qual planeta é conhecido como planeta vermelho?', a: ['Vênus', 'Júpiter', 'Marte', 'Saturno'], c: 2, e: 'Marte tem a superfície cheia de óxido de ferro, que lhe dá a cor avermelhada.', t: 'Universo' },
+    { p: 'A Terra demora cerca de quanto tempo para dar uma volta em torno do Sol?', a: ['1 dia', '1 mês', '1 ano', '10 anos'], c: 2, e: 'A translação dura cerca de 365 dias: é o nosso ano.', t: 'Universo' },
+    { p: 'O dia e a noite acontecem por causa do movimento de:', a: ['Translação da Terra', 'Rotação da Terra', 'Rotação da Lua', 'Translação do Sol'], c: 1, e: 'A Terra gira em torno do próprio eixo em 24 horas: metade dela fica virada para o Sol.', t: 'Universo' },
+    { p: 'Qual destes materiais é um bom condutor de eletricidade?', a: ['Borracha', 'Madeira', 'Cobre', 'Vidro'], c: 2, e: 'Metais como o cobre conduzem bem a eletricidade; borracha e vidro são isolantes.', t: 'Energia' },
+    { p: 'O que é um ímã capaz de atrair?', a: ['Papel', 'Objetos de ferro', 'Plástico', 'Vidro'], c: 1, e: 'Ímãs atraem materiais magnéticos, como o ferro e o níquel.', t: 'Energia' },
+    { p: 'Qual é o estado físico do gelo?', a: ['Líquido', 'Gasoso', 'Sólido', 'Vapor'], c: 2, e: 'O gelo é a água no estado sólido, abaixo de 0 °C.', t: 'Água' },
+    { p: 'Misturar areia e água forma uma mistura:', a: ['Homogênea', 'Heterogênea', 'Gasosa', 'Pura'], c: 1, e: 'Dá para ver as duas partes separadas: a areia afunda. Por isso é heterogênea.', t: 'Materiais' },
+    { p: 'Qual destes animais é um mamífero?', a: ['Tubarão', 'Golfinho', 'Sapo', 'Pinguim'], c: 1, e: 'Golfinhos respiram ar, têm sangue quente e amamentam os filhotes.', t: 'Animais' },
+    { p: 'Os anfíbios, como o sapo, nascem na água e depois:', a: ['Viram peixes', 'Vivem também na terra', 'Voam', 'Hibernam para sempre'], c: 1, e: 'O girino vive na água e, adulto, o sapo vive na terra e na água.', t: 'Animais' },
+    { p: 'Qual é a função da clorofila?', a: ['Dar cheiro à flor', 'Captar a luz do Sol', 'Produzir sementes', 'Absorver água'], c: 1, e: 'A clorofila é o pigmento verde que capta a energia da luz para a fotossíntese.', t: 'Plantas' },
+    { p: 'Reciclar o lixo ajuda principalmente a:', a: ['Gastar mais energia', 'Poupar recursos naturais', 'Aumentar o lixo', 'Poluir rios'], c: 1, e: 'Reciclar reaproveita materiais e reduz a retirada de recursos da natureza.', t: 'Ambiente' },
+    { p: 'O som se propaga melhor em qual meio?', a: ['No vácuo', 'No ar', 'Na água', 'Em sólidos como o ferro'], c: 3, e: 'O som precisa de matéria para viajar e vai mais rápido em sólidos; no vácuo não há som.', t: 'Energia' },
+    { p: 'Qual sentido usamos para perceber os sabores?', a: ['Audição', 'Paladar', 'Olfato', 'Tato'], c: 1, e: 'O paladar, na língua, percebe doce, salgado, azedo, amargo e umami.', t: 'Corpo humano' },
+    { p: 'O que as vacinas fazem no nosso corpo?', a: ['Causam doenças', 'Ensinam as defesas a reconhecer micróbios', 'Substituem o sangue', 'Aumentam a altura'], c: 1, e: 'A vacina mostra ao sistema de defesa um micróbio enfraquecido, para ele aprender a combatê-lo.', t: 'Saúde' },
+    { p: 'Lavar as mãos antes de comer evita principalmente:', a: ['Crescer menos', 'Pegar micróbios', 'Sentir frio', 'Ter sono'], c: 1, e: 'As mãos carregam micróbios; lavar com sabão retira a maioria deles.', t: 'Saúde' },
+    { p: 'Qual fonte de energia é renovável?', a: ['Carvão', 'Petróleo', 'Energia solar', 'Gás natural'], c: 2, e: 'A luz do Sol não acaba na escala humana; carvão, petróleo e gás são fósseis e esgotáveis.', t: 'Energia' },
+    { p: 'A camada de gases que envolve a Terra se chama:', a: ['Hidrosfera', 'Atmosfera', 'Litosfera', 'Biosfera'], c: 1, e: 'A atmosfera é a camada de ar; a hidrosfera é a água; a litosfera, as rochas.', t: 'Ambiente' },
+    { p: 'Qual destes seres vivos produz o próprio alimento?', a: ['Cachorro', 'Cogumelo', 'Árvore', 'Minhoca'], c: 2, e: 'Plantas e algas são produtores: fabricam açúcar pela fotossíntese.', t: 'Cadeia alimentar' },
+    { p: 'A Lua brilha porque:', a: ['Produz luz própria', 'Reflete a luz do Sol', 'É feita de fogo', 'Tem eletricidade'], c: 1, e: 'A Lua não tem luz própria: vemos a luz do Sol refletida na superfície dela.', t: 'Universo' },
+  ],
+  curiosidades: [
+    { titulo: 'O ar que a gente não vê', texto: 'Quase 78 % do ar é nitrogênio e só 21 % é oxigênio. O gás carbônico, que as plantas usam, é menos de 0,05 %.' },
+    { titulo: 'Plantas respiram?', texto: 'Sim. As plantas fazem fotossíntese de dia, mas respiram o tempo todo, consumindo parte do oxigênio que produzem.' },
+    { titulo: 'Água que viaja', texto: 'A água da chuva de hoje já pode ter passado por um rio, por uma nuvem e por um dinossauro, há milhões de anos.' },
+  ],
+};
